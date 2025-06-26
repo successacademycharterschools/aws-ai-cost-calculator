@@ -28,17 +28,37 @@ class AIProjectCostCalculator:
         self.sandbox_account_id = sandbox_account_id or os.environ.get('AWS_SANDBOX_ACCOUNT_ID')
         self.nonprod_account_id = nonprod_account_id or os.environ.get('AWS_NONPROD_ACCOUNT_ID')
         
+        # Validate account IDs
+        self.valid_accounts = []
+        if self._is_valid_account_id(self.sandbox_account_id):
+            self.valid_accounts.append(('sandbox', self.sandbox_account_id))
+        if self._is_valid_account_id(self.nonprod_account_id):
+            self.valid_accounts.append(('nonprod', self.nonprod_account_id))
+        
         # Initialize boto3 clients with session token support
-        self.ce_client = self._create_boto3_client('ce')
+        self.session = self._create_boto3_session()
+        self.ce_client = self.session.client('ce')
+        self.lambda_client = self.session.client('lambda')
         
         # Load project configuration
         self.projects = self.load_project_config()
         
         # Cost data storage
         self.cost_data = {}
+        self.lambda_function_counts = {}
     
-    def _create_boto3_client(self, service_name: str):
-        """Create boto3 client with session token support"""
+    def _is_valid_account_id(self, account_id: str) -> bool:
+        """Check if account ID is valid (12 digits)"""
+        if not account_id:
+            return False
+        if account_id in ['YOUR_SANDBOX_ACCOUNT_ID', 'YOUR_NONPROD_ACCOUNT_ID']:
+            return False
+        if not account_id.isdigit() or len(account_id) != 12:
+            return False
+        return True
+    
+    def _create_boto3_session(self):
+        """Create boto3 session with session token support"""
         # Check for session token authentication
         access_key = os.environ.get('AWS_ACCESS_KEY_ID')
         secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -46,18 +66,17 @@ class AIProjectCostCalculator:
         
         if session_token:
             # Use session token authentication
-            logger.info(f"Using AWS session token authentication for {service_name}")
-            session = boto3.Session(
+            logger.info("Using AWS session token authentication")
+            return boto3.Session(
                 aws_access_key_id=access_key,
                 aws_secret_access_key=secret_key,
                 aws_session_token=session_token,
                 region_name='us-east-1'  # Cost Explorer only works in us-east-1
             )
-            return session.client(service_name)
         else:
             # Use default authentication (IAM role, credentials file, etc.)
-            logger.info(f"Using default AWS authentication for {service_name}")
-            return boto3.client(service_name, region_name='us-east-1')
+            logger.info("Using default AWS authentication")
+            return boto3.Session(region_name='us-east-1')
         
     def load_project_config(self) -> Dict:
         """Load AI project configuration"""
@@ -124,49 +143,87 @@ class AIProjectCostCalculator:
                 time.sleep(wait_time)
         return None
     
+    def get_ai_lambda_functions(self) -> Dict[str, List[str]]:
+        """List all Lambda functions and categorize by AI project"""
+        ai_functions = {project_id: [] for project_id in self.projects}
+        total_functions = 0
+        
+        try:
+            # List all Lambda functions
+            paginator = self.lambda_client.get_paginator('list_functions')
+            
+            for page in paginator.paginate():
+                for function in page.get('Functions', []):
+                    function_name = function['FunctionName'].lower()
+                    total_functions += 1
+                    
+                    # Check which AI project this function belongs to
+                    for project_id, project_config in self.projects.items():
+                        for pattern in project_config.get('lambda_patterns', []):
+                            if pattern.lower() in function_name:
+                                ai_functions[project_id].append(function['FunctionName'])
+                                break
+            
+            # Store counts for reporting
+            self.lambda_function_counts['total'] = total_functions
+            for project_id, functions in ai_functions.items():
+                self.lambda_function_counts[project_id] = len(functions)
+                
+            logger.info(f"Found {total_functions} total Lambda functions")
+            for project_id, functions in ai_functions.items():
+                if functions:
+                    logger.info(f"  {self.projects[project_id]['name']}: {len(functions)} functions")
+                    
+        except Exception as e:
+            logger.error(f"Error listing Lambda functions: {str(e)}")
+            
+        return ai_functions
+    
     def get_lambda_costs_for_project(self, project_id: str, project_config: Dict, 
                                    start_date: str, end_date: str, account_id: str) -> Decimal:
-        """Get Lambda costs filtered for AI-specific functions only"""
-        total_cost = Decimal('0')
-        
-        # Try to get costs by function name patterns
-        for pattern in project_config.get('lambda_patterns', []):
-            try:
-                response = self.retry_api_call(
-                    self.ce_client.get_cost_and_usage,
-                    TimePeriod={'Start': start_date, 'End': end_date},
-                    Granularity='MONTHLY',
-                    Metrics=['UnblendedCost'],
-                    Filter={
-                        'And': [
-                            {'Dimensions': {'Key': 'SERVICE', 'Values': ['AWS Lambda']}},
-                            {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': [account_id]}},
-                            {'Dimensions': {'Key': 'USAGE_TYPE', 'Values': [
-                                'Lambda-GB-Second', 'Lambda-Request', 'LambdaEdge-GB-Second', 
-                                'LambdaEdge-Request', 'Lambda-Provisioned-GB-Second',
-                                'Lambda-Provisioned-Concurrency'
-                            ]}}
-                        ]
-                    },
-                    GroupBy=[
-                        {'Type': 'DIMENSION', 'Key': 'RESOURCE_ID'}
+        """Get Lambda costs using percentage-based allocation"""
+        try:
+            # Get total Lambda costs for the account
+            response = self.retry_api_call(
+                self.ce_client.get_cost_and_usage,
+                TimePeriod={'Start': start_date, 'End': end_date},
+                Granularity='MONTHLY',
+                Metrics=['UnblendedCost'],
+                Filter={
+                    'And': [
+                        {'Dimensions': {'Key': 'SERVICE', 'Values': ['AWS Lambda']}},
+                        {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': [account_id]}}
                     ]
-                )
+                }
+            )
+            
+            if response and 'ResultsByTime' in response:
+                total_lambda_cost = Decimal('0')
+                for result in response['ResultsByTime']:
+                    amount = result['Total']['UnblendedCost']['Amount']
+                    total_lambda_cost += Decimal(amount)
                 
-                if response and 'ResultsByTime' in response:
-                    for result in response['ResultsByTime']:
-                        for group in result.get('Groups', []):
-                            resource_id = group['Keys'][0]
-                            # Check if this Lambda function matches our AI project pattern
-                            if any(p in resource_id.lower() for p in pattern.lower().split('-')):
-                                cost = Decimal(group['Metrics']['UnblendedCost']['Amount'])
-                                total_cost += cost
-                                logger.info(f"Found Lambda cost for {project_id}: {resource_id} = ${cost}")
-                                
-            except Exception as e:
-                logger.error(f"Error getting Lambda costs for pattern {pattern}: {str(e)}")
+                # Calculate AI percentage if we have function counts
+                if hasattr(self, 'lambda_function_counts') and 'total' in self.lambda_function_counts:
+                    total_functions = self.lambda_function_counts.get('total', 0)
+                    project_functions = self.lambda_function_counts.get(project_id, 0)
+                    
+                    if total_functions > 0 and project_functions > 0:
+                        ai_percentage = Decimal(project_functions) / Decimal(total_functions)
+                        ai_cost = total_lambda_cost * ai_percentage
+                        logger.info(f"Lambda cost for {project_id}: ${ai_cost:.2f} ({project_functions}/{total_functions} functions = {ai_percentage:.1%})")
+                        return ai_cost
                 
-        return total_cost
+                # Fallback: use configured percentage
+                default_percentage = Decimal('0.2')  # 20% default
+                ai_cost = total_lambda_cost * default_percentage
+                logger.info(f"Lambda cost for {project_id}: ${ai_cost:.2f} (estimated {default_percentage:.0%})")
+                return ai_cost
+                
+        except Exception as e:
+            logger.error(f"Error getting Lambda costs: {str(e)}")
+            
+        return Decimal('0')
     
     def get_service_costs(self, service: str, project_id: str, project_config: Dict,
                          start_date: str, end_date: str, account_id: str) -> Decimal:
@@ -190,6 +247,9 @@ class AIProjectCostCalculator:
             'events': 'Amazon EventBridge',
             'logs': 'Amazon CloudWatch'
         }
+        
+        # Services that are 100% AI-related
+        ai_only_services = ['bedrock', 'kendra']
         
         aws_service_name = service_mapping.get(service, service)
         
@@ -221,17 +281,23 @@ class AIProjectCostCalculator:
             if response and 'ResultsByTime' in response:
                 total_cost = Decimal('0')
                 for result in response['ResultsByTime']:
-                    for group in result.get('Groups', []):
-                        cost = Decimal(group['Metrics']['UnblendedCost']['Amount'])
-                        total_cost += cost
+                    amount = result.get('Total', {}).get('UnblendedCost', {}).get('Amount', '0')
+                    total_cost += Decimal(amount)
                 
-                # For S3 and DynamoDB, estimate project portion based on naming
-                if service in ['s3', 'dynamodb'] and total_cost > 0:
-                    # Rough estimate: assume 20% of costs are for this AI project
-                    # In production, you'd use tags or more sophisticated filtering
-                    total_cost = total_cost * Decimal('0.2')
-                    
-                return total_cost
+                # Handle different service types
+                if service in ai_only_services:
+                    # 100% of costs for AI-only services
+                    logger.info(f"{service.upper()} cost (100% AI): ${total_cost:.2f}")
+                    return total_cost
+                elif service in ['s3', 'dynamodb'] and total_cost > 0:
+                    # Estimate based on project allocation
+                    ai_percentage = Decimal('0.2')  # 20% default
+                    ai_cost = total_cost * ai_percentage
+                    logger.info(f"{service.upper()} cost (estimated {ai_percentage:.0%} AI): ${ai_cost:.2f}")
+                    return ai_cost
+                else:
+                    # Other services - return full cost for now
+                    return total_cost
             
         except Exception as e:
             logger.error(f"Error getting {service} costs: {str(e)}")
@@ -243,9 +309,19 @@ class AIProjectCostCalculator:
         start_date, end_date = self.get_date_range()
         logger.info(f"Calculating costs from {start_date} to {end_date}")
         
+        # First, get Lambda function inventory
+        logger.info("Analyzing Lambda functions...")
+        self.get_ai_lambda_functions()
+        
+        # Check if we have valid accounts
+        if not self.valid_accounts:
+            logger.error("No valid AWS account IDs configured!")
+            logger.error("Please set AWS_SANDBOX_ACCOUNT_ID and/or AWS_NONPROD_ACCOUNT_ID")
+            return
+        
         # Process each project
         for project_id, project_config in self.projects.items():
-            logger.info(f"Processing project: {project_config['name']} (Status: {project_config['status']})")
+            logger.info(f"\nProcessing project: {project_config['name']} (Status: {project_config['status']})")
             
             project_costs = {
                 'name': project_config['name'],
@@ -258,25 +334,19 @@ class AIProjectCostCalculator:
             for service in project_config['services']:
                 service_total = Decimal('0')
                 
-                # Get costs from sandbox account
-                if self.sandbox_account_id:
-                    sandbox_cost = self.get_service_costs(
-                        service, project_id, project_config,
-                        start_date, end_date, self.sandbox_account_id
-                    )
-                    service_total += sandbox_cost
-                    if sandbox_cost > 0:
-                        logger.info(f"  {service} (sandbox): ${sandbox_cost:.2f}")
-                
-                # Get costs from non-prod account
-                if self.nonprod_account_id:
-                    nonprod_cost = self.get_service_costs(
-                        service, project_id, project_config,
-                        start_date, end_date, self.nonprod_account_id
-                    )
-                    service_total += nonprod_cost
-                    if nonprod_cost > 0:
-                        logger.info(f"  {service} (non-prod): ${nonprod_cost:.2f}")
+                # Process each valid account
+                for env_name, account_id in self.valid_accounts:
+                    try:
+                        cost = self.get_service_costs(
+                            service, project_id, project_config,
+                            start_date, end_date, account_id
+                        )
+                        service_total += cost
+                        if cost > 0:
+                            logger.info(f"  {service} ({env_name}): ${cost:.2f}")
+                    except Exception as e:
+                        logger.warning(f"  Failed to get {service} costs for {env_name}: {str(e)}")
+                        continue
                 
                 if service_total > 0:
                     project_costs['services'][service] = service_total
@@ -289,7 +359,7 @@ class AIProjectCostCalculator:
         """Export cost data to CSV file"""
         try:
             with open(filename, 'w', newline='') as csvfile:
-                fieldnames = ['Project Name', 'Service', 'Current Month Cost', 'Daily Average', 'Status']
+                fieldnames = ['Project Name', 'Service', 'Current Month Cost', 'Daily Average', 'Status', 'Calculation Method']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 
                 writer.writeheader()
@@ -302,12 +372,29 @@ class AIProjectCostCalculator:
                     # Write individual service costs
                     for service, cost in project_data['services'].items():
                         daily_avg = cost / days_in_month if days_in_month > 0 else Decimal('0')
+                        
+                        # Determine calculation method
+                        if service in ['bedrock', 'kendra']:
+                            calc_method = "100% AI Service"
+                        elif service == 'lambda':
+                            func_count = self.lambda_function_counts.get(project_id, 0)
+                            total_funcs = self.lambda_function_counts.get('total', 0)
+                            if func_count > 0 and total_funcs > 0:
+                                calc_method = f"{func_count}/{total_funcs} functions"
+                            else:
+                                calc_method = "Estimated 20%"
+                        elif service in ['s3', 'dynamodb']:
+                            calc_method = "Estimated 20%"
+                        else:
+                            calc_method = "Full cost"
+                        
                         writer.writerow({
                             'Project Name': project_data['name'],
                             'Service': service.upper(),
                             'Current Month Cost': f"${cost:.2f}",
                             'Daily Average': f"${daily_avg:.2f}",
-                            'Status': project_data['status']
+                            'Status': project_data['status'],
+                            'Calculation Method': calc_method
                         })
                     
                     # Write project total
@@ -318,7 +405,8 @@ class AIProjectCostCalculator:
                             'Service': 'TOTAL',
                             'Current Month Cost': f"${project_data['total']:.2f}",
                             'Daily Average': f"${daily_avg:.2f}",
-                            'Status': project_data['status']
+                            'Status': project_data['status'],
+                            'Calculation Method': 'Sum of services'
                         })
                         writer.writerow({})  # Empty row for separation
                 
@@ -330,20 +418,18 @@ class AIProjectCostCalculator:
     def run(self):
         """Main execution method"""
         logger.info("Starting AWS AI Cost Calculator...")
-        
-        # Validate configuration
-        if not self.sandbox_account_id and not self.nonprod_account_id:
-            logger.error("No AWS account IDs configured. Set AWS_SANDBOX_ACCOUNT_ID and/or AWS_NONPROD_ACCOUNT_ID")
-            return
+        logger.info(f"Session authenticated: {'Yes' if os.environ.get('AWS_SESSION_TOKEN') else 'No'}")
         
         # Calculate costs
         self.calculate_all_costs()
         
         # Export results
-        self.export_to_csv()
-        
-        # Print summary
-        self.print_summary()
+        if self.cost_data:
+            self.export_to_csv()
+            # Print summary
+            self.print_summary()
+        else:
+            logger.warning("No cost data collected. Check your configuration and AWS permissions.")
     
     def print_summary(self):
         """Print cost summary to console"""
