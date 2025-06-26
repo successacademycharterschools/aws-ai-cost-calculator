@@ -18,6 +18,7 @@ __pycache__/
 
 # AWS credentials
 .aws/
+*.pem
 
 # Output files
 *.csv
@@ -31,6 +32,7 @@ ai_resources_*.json
 *.swo
 *~
 .DS_Store
+Thumbs.db
 
 # Logs
 *.log
@@ -45,9 +47,24 @@ build/
 dist/
 *.egg-info/
 .eggs/
+develop-eggs/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+.installed.cfg
+*.egg
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
 # pyenv
 .python-version
+
+# Credentials (NEVER commit these)
+*credentials*
+*secret*

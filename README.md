@@ -20,17 +20,24 @@ An interactive cost calculator for AWS AI services that uses SSO authentication 
 
 ## Installation
 
-1. Clone or download this calculator:
+1. Clone the repository:
 ```bash
-cd /Users/lasaj917/Claude\ Code/aws-ai-cost-calculator-sso
+git clone https://github.com/successacademycharterschools/aws-ai-cost-calculator.git
+cd aws-ai-cost-calculator
 ```
 
-2. Install dependencies:
+2. Create a virtual environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Configure AWS CLI for SSO (if not already done):
+4. Configure AWS CLI for SSO (if not already done):
 ```bash
 aws configure sso
 ```
@@ -45,7 +52,7 @@ python cli.py
 ```
 
 The tool will:
-1. Prompt for your AWS SSO URL (e.g., `https://successacademies.awsapps.com/start`)
+1. Prompt for your AWS SSO URL (e.g., `https://d-9067640efb.awsapps.com/start`)
 2. Open your browser for Okta authentication
 3. Let you select AWS accounts to analyze
 4. Automatically discover AI services
@@ -84,7 +91,7 @@ python sso_cost_calculator.py
 The tool saves your SSO URL for convenience in `.aws-cost-config.json`:
 ```json
 {
-  "sso_start_url": "https://successacademies.awsapps.com/start",
+  "sso_start_url": "https://d-9067640efb.awsapps.com/start",
   "sso_region": "us-east-1"
 }
 ```
