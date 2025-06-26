@@ -1,0 +1,39 @@
+{
+  "sso_start_url": "https://d-9067640efb.awsapps.com/start",
+  "sso_region": "us-east-1",
+  "default_accounts": ["Sandbox", "Non-Prod"],
+  "ai_service_patterns": {
+    "lambda": [
+      "*-ai-*",
+      "*ask-eva*",
+      "*iep-report*",
+      "*resume-*"
+    ],
+    "s3": [
+      "sa-ai-*",
+      "*-modeltraining"
+    ]
+  },
+  "projects": {
+    "ask-eva": {
+      "name": "Ask Eva",
+      "status": "POC"
+    },
+    "iep-report": {
+      "name": "IEP Report", 
+      "status": "MVP"
+    },
+    "resume-knockout": {
+      "name": "Resume Knockout",
+      "status": "Paused"
+    },
+    "resume-scoring": {
+      "name": "Resume Scoring",
+      "status": "Paused"
+    },
+    "financial-aid": {
+      "name": "Financial Aid",
+      "status": "MVP"
+    }
+  }
+}
