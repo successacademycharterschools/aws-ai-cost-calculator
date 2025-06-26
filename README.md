@@ -12,6 +12,28 @@ Simple Python script to calculate AWS costs for AI projects across multiple envi
 
 ## Setup
 
+### Option 1: Using AWS Session Token (Temporary Credentials)
+
+1. Set your AWS session token and credentials:
+   ```bash
+   export AWS_ACCESS_KEY_ID="your-access-key-id"
+   export AWS_SECRET_ACCESS_KEY="your-secret-access-key"
+   export AWS_SESSION_TOKEN="your-session-token"
+   ```
+
+2. Set your AWS account IDs:
+   ```bash
+   export AWS_SANDBOX_ACCOUNT_ID="123456789012"
+   export AWS_NONPROD_ACCOUNT_ID="234567890123"
+   ```
+
+3. Run the calculator:
+   ```bash
+   ./run_cost_calculator.sh
+   ```
+
+### Option 2: Using AWS CLI Credentials
+
 1. Install AWS CLI and configure credentials:
    ```bash
    aws configure
@@ -28,11 +50,12 @@ Simple Python script to calculate AWS costs for AI projects across multiple envi
    ./run_cost_calculator.sh
    ```
 
-   Or manually:
-   ```bash
-   pip install -r requirements.txt
-   python ai_cost_calculator.py
-   ```
+### Manual Execution
+
+```bash
+pip install -r requirements.txt
+python ai_cost_calculator.py
+```
 
 ## Output
 

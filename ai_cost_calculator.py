@@ -28,14 +28,36 @@ class AIProjectCostCalculator:
         self.sandbox_account_id = sandbox_account_id or os.environ.get('AWS_SANDBOX_ACCOUNT_ID')
         self.nonprod_account_id = nonprod_account_id or os.environ.get('AWS_NONPROD_ACCOUNT_ID')
         
-        # Initialize boto3 clients
-        self.ce_client = boto3.client('ce', region_name='us-east-1')  # Cost Explorer only works in us-east-1
+        # Initialize boto3 clients with session token support
+        self.ce_client = self._create_boto3_client('ce')
         
         # Load project configuration
         self.projects = self.load_project_config()
         
         # Cost data storage
         self.cost_data = {}
+    
+    def _create_boto3_client(self, service_name: str):
+        """Create boto3 client with session token support"""
+        # Check for session token authentication
+        access_key = os.environ.get('AWS_ACCESS_KEY_ID')
+        secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+        session_token = os.environ.get('AWS_SESSION_TOKEN')
+        
+        if session_token:
+            # Use session token authentication
+            logger.info(f"Using AWS session token authentication for {service_name}")
+            session = boto3.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
+                region_name='us-east-1'  # Cost Explorer only works in us-east-1
+            )
+            return session.client(service_name)
+        else:
+            # Use default authentication (IAM role, credentials file, etc.)
+            logger.info(f"Using default AWS authentication for {service_name}")
+            return boto3.client(service_name, region_name='us-east-1')
         
     def load_project_config(self) -> Dict:
         """Load AI project configuration"""
