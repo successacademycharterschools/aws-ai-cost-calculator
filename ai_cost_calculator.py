@@ -77,47 +77,82 @@ class AIProjectCostCalculator:
             # Use default authentication (IAM role, credentials file, etc.)
             logger.info("Using default AWS authentication")
             return boto3.Session(region_name='us-east-1')
+    
+    def _map_aws_service_to_key(self, aws_service_name: str) -> str:
+        """Map AWS service names to our short keys"""
+        service_reverse_mapping = {
+            'Amazon Simple Storage Service': 's3',
+            'Amazon DynamoDB': 'dynamodb',
+            'Amazon Bedrock': 'bedrock',
+            'Amazon API Gateway': 'apigateway',
+            'Amazon Simple Queue Service': 'sqs',
+            'Amazon Simple Notification Service': 'sns',
+            'Amazon Kendra': 'kendra',
+            'AWS Amplify': 'amplify',
+            'Amazon EventBridge': 'events',
+            'Amazon CloudWatch': 'logs',
+            'AWS Lambda': 'lambda'
+        }
+        return service_reverse_mapping.get(aws_service_name, aws_service_name.lower())
         
     def load_project_config(self) -> Dict:
-        """Load AI project configuration"""
+        """Load AI project configuration with exact resource names"""
         return {
             "resume_knockout": {
                 "name": "Resume Knockout",
                 "status": "paused",
                 "services": ["lambda", "s3", "sns", "events"],
-                "lambda_patterns": ["resume-knockout", "rk-", "resumeknockout"],
-                "s3_buckets": ["resume-knockout", "rk-data"],
+                "lambda_functions": ["Resume-Knockout-batch"],  # From your flow diagram
+                "s3_buckets": ["sa-resume-knockout-data"],
                 "tags": {"Project": "ResumeKnockout", "project": "resume-knockout"}
             },
             "ask_eva": {
                 "name": "Ask Eva",
                 "status": "POC",
-                "services": ["amplify", "apigateway", "lambda", "bedrock", "kendra"],
-                "lambda_patterns": ["ask-eva", "askeva", "eva-bot"],
-                "bedrock_models": ["anthropic.claude-3-haiku"],
+                "services": ["lambda", "s3", "dynamodb", "bedrock", "kendra"],
+                "lambda_functions": [
+                    "sa-ai-ask-eva-Lamda",
+                    "sa-ai-ask-eva-list-conv-history"
+                ],
+                "s3_buckets": [
+                    "sa-ai-ask-eva",
+                    "sa-ai-ask-eva-frontend"
+                ],
+                "dynamodb_tables": [
+                    "sa_ai_ask_eva_conversation_history"
+                ],
+                "bedrock_agents": [
+                    "ask-eva-poc-agent-quick-start-i87ch",
+                    "agent-quick-start-npl14",
+                    "sa-ai-ask-eva-tone-agent-quick-start-rc5o4"
+                ],
+                "kendra_indexes": [
+                    "askk-eva-poc-knowledge-base-quick-start-xejg1",
+                    "knowledge-base-quick-start-bmm8s"
+                ],
                 "tags": {"Project": "AskEva", "project": "ask-eva"}
             },
             "resume_scoring": {
                 "name": "Resume Scoring",
                 "status": "paused",
                 "services": ["lambda"],
-                "lambda_patterns": ["resume-scoring", "scoring", "rs-"],
+                "lambda_functions": [],  # Add specific function names when available
                 "tags": {"Project": "ResumeScoring", "project": "resume-scoring"}
             },
             "iep_report": {
                 "name": "IEP Report",
                 "status": "MVP",
                 "services": ["lambda", "apigateway", "logs", "bedrock"],
-                "lambda_patterns": ["iep-report", "iep", "scholar-report"],
+                "lambda_functions": [],  # Add specific function names when available
                 "tags": {"Project": "IEPReport", "project": "iep-report"}
             },
             "financial_aid": {
                 "name": "Financial Aid",
                 "status": "MVP",
                 "services": ["s3", "lambda", "sqs", "bedrock", "dynamodb"],
-                "lambda_patterns": ["financial-aid", "finaid", "fa-"],
-                "s3_buckets": ["financial-aid", "finaid-data"],
-                "dynamodb_tables": ["financial-aid", "finaid"],
+                "lambda_functions": [],  # Add specific function names when available
+                "s3_buckets": [],  # Add specific bucket names when available
+                "dynamodb_tables": [],  # Add specific table names when available
                 "tags": {"Project": "FinancialAid", "project": "financial-aid"}
             }
         }
@@ -146,7 +181,13 @@ class AIProjectCostCalculator:
     def get_ai_lambda_functions(self) -> Dict[str, List[str]]:
         """List all Lambda functions and categorize by AI project"""
         ai_functions = {project_id: [] for project_id in self.projects}
+        all_ai_functions = set()
         total_functions = 0
+        
+        # First, collect all known AI function names
+        for project_id, project_config in self.projects.items():
+            for func_name in project_config.get('lambda_functions', []):
+                all_ai_functions.add(func_name.lower())
         
         try:
             # List all Lambda functions
@@ -159,10 +200,10 @@ class AIProjectCostCalculator:
                     
                     # Check which AI project this function belongs to
                     for project_id, project_config in self.projects.items():
-                        for pattern in project_config.get('lambda_patterns', []):
-                            if pattern.lower() in function_name:
-                                ai_functions[project_id].append(function['FunctionName'])
-                                break
+                        # Check exact function names
+                        if function['FunctionName'] in project_config.get('lambda_functions', []):
+                            ai_functions[project_id].append(function['FunctionName'])
+                            break
             
             # Store counts for reporting
             self.lambda_function_counts['total'] = total_functions
@@ -304,6 +345,42 @@ class AIProjectCostCalculator:
             
         return Decimal('0')
     
+    def get_costs_by_tag(self, tag_key: str, tag_value: str, start_date: str, 
+                        end_date: str, account_id: str) -> Dict[str, Decimal]:
+        """Get costs filtered by specific tag"""
+        try:
+            response = self.retry_api_call(
+                self.ce_client.get_cost_and_usage,
+                TimePeriod={'Start': start_date, 'End': end_date},
+                Granularity='MONTHLY',
+                Metrics=['UnblendedCost'],
+                Filter={
+                    'And': [
+                        {'Tags': {'Key': tag_key, 'Values': [tag_value]}},
+                        {'Dimensions': {'Key': 'LINKED_ACCOUNT', 'Values': [account_id]}}
+                    ]
+                },
+                GroupBy=[
+                    {'Type': 'DIMENSION', 'Key': 'SERVICE'}
+                ]
+            )
+            
+            service_costs = {}
+            if response and 'ResultsByTime' in response:
+                for result in response['ResultsByTime']:
+                    for group in result.get('Groups', []):
+                        service = group['Keys'][0]
+                        amount = group['Metrics']['UnblendedCost']['Amount']
+                        if service not in service_costs:
+                            service_costs[service] = Decimal('0')
+                        service_costs[service] += Decimal(amount)
+                        
+            return service_costs
+            
+        except Exception as e:
+            logger.warning(f"Could not get costs by tag {tag_key}={tag_value}: {str(e)}")
+            return {}
+    
     def calculate_all_costs(self):
         """Calculate costs for all AI projects"""
         start_date, end_date = self.get_date_range()
@@ -330,27 +407,51 @@ class AIProjectCostCalculator:
                 'total': Decimal('0')
             }
             
-            # Calculate costs for each service in both environments
-            for service in project_config['services']:
-                service_total = Decimal('0')
-                
-                # Process each valid account
-                for env_name, account_id in self.valid_accounts:
-                    try:
-                        cost = self.get_service_costs(
-                            service, project_id, project_config,
-                            start_date, end_date, account_id
-                        )
-                        service_total += cost
-                        if cost > 0:
-                            logger.info(f"  {service} ({env_name}): ${cost:.2f}")
-                    except Exception as e:
-                        logger.warning(f"  Failed to get {service} costs for {env_name}: {str(e)}")
-                        continue
-                
-                if service_total > 0:
-                    project_costs['services'][service] = service_total
-                    project_costs['total'] += service_total
+            # First, try to get costs by tag if available
+            use_tag_costs = False
+            if 'tags' in project_config:
+                for tag_key, tag_value in project_config['tags'].items():
+                    for env_name, account_id in self.valid_accounts:
+                        tag_costs = self.get_costs_by_tag(tag_key, tag_value, start_date, end_date, account_id)
+                        if tag_costs:
+                            logger.info(f"  Using tag-based costs for {project_config['name']} ({tag_key}={tag_value})")
+                            use_tag_costs = True
+                            for service_name, cost in tag_costs.items():
+                                # Map AWS service names to our short names
+                                service_key = self._map_aws_service_to_key(service_name)
+                                if service_key in project_config['services']:
+                                    if service_key not in project_costs['services']:
+                                        project_costs['services'][service_key] = Decimal('0')
+                                    project_costs['services'][service_key] += cost
+                                    project_costs['total'] += cost
+                                    logger.info(f"  {service_key} ({env_name}, tagged): ${cost:.2f}")
+                            break
+                    if use_tag_costs:
+                        break
+            
+            # If tag-based costs not available, fall back to service-based calculation
+            if not use_tag_costs:
+                # Calculate costs for each service in both environments
+                for service in project_config['services']:
+                    service_total = Decimal('0')
+                    
+                    # Process each valid account
+                    for env_name, account_id in self.valid_accounts:
+                        try:
+                            cost = self.get_service_costs(
+                                service, project_id, project_config,
+                                start_date, end_date, account_id
+                            )
+                            service_total += cost
+                            if cost > 0:
+                                logger.info(f"  {service} ({env_name}): ${cost:.2f}")
+                        except Exception as e:
+                            logger.warning(f"  Failed to get {service} costs for {env_name}: {str(e)}")
+                            continue
+                    
+                    if service_total > 0:
+                        project_costs['services'][service] = service_total
+                        project_costs['total'] += service_total
             
             self.cost_data[project_id] = project_costs
             logger.info(f"  Total for {project_config['name']}: ${project_costs['total']:.2f}\n")
