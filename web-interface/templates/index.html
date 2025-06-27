@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS AI Cost Calculator - Success Academies</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sa-blue: #005e9e;
+            --sa-orange: #f7941e;
+            --sa-white: #ffffff;
+            --sa-black: #000000;
+            --sa-gray-light: #f5f5f5;
+            --sa-gray-medium: #e0e0e0;
+            --sa-gray-dark: #666666;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', Arial, Helvetica, sans-serif;
+            background-color: var(--sa-gray-light);
+            color: var(--sa-black);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background-color: var(--sa-white);
+            box-shadow: var(--shadow);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--sa-black);
+            text-decoration: none;
+        }
+
+        .logo span {
+            color: var(--sa-orange);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--sa-white);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--sa-gray-light);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--sa-blue);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: var(--sa-blue);
+            color: var(--sa-white);
+        }
+
+        .btn-primary:hover {
+            background-color: #004b7f;
+        }
+
+        .btn-secondary {
+            background-color: var(--sa-orange);
+            color: var(--sa-white);
+        }
+
+        .btn-secondary:hover {
+            background-color: #e67e00;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--sa-blue);
+            color: var(--sa-blue);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--sa-blue);
+            color: var(--sa-white);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--sa-gray-dark);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--sa-gray-medium);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--sa-blue);
+        }
+
+        /* Progress Steps */
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3rem;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background-color: var(--sa-gray-medium);
+            z-index: -1;
+        }
+
+        .step.completed:not(:last-child)::after {
+            background-color: var(--sa-orange);
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--sa-gray-medium);
+            color: var(--sa-white);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .step.active .step-number {
+            background-color: var(--sa-blue);
+        }
+
+        .step.completed .step-number {
+            background-color: var(--sa-orange);
+        }
+
+        .step-label {
+            font-size: 0.875rem;
+            color: var(--sa-gray-dark);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--sa-gray-medium);
+            border-top-color: var(--sa-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-info {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+
+        .alert-success {
+            background-color: #e8f5e9;
+            color: #388e3c;
+            border-left: 4px solid #388e3c;
+        }
+
+        .alert-error {
+            background-color: #ffebee;
+            color: #d32f2f;
+            border-left: 4px solid #d32f2f;
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: var(--sa-gray-light);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--sa-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: var(--sa-gray-dark);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Cost Table */
+        .cost-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cost-table th,
+        .cost-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--sa-gray-medium);
+        }
+
+        .cost-table th {
+            background-color: var(--sa-gray-light);
+            font-weight: 600;
+            color: var(--sa-gray-dark);
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .cost-table tr:hover {
+            background-color: var(--sa-gray-light);
+        }
+
+        /* Account List */
+        .account-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--sa-gray-medium);
+            border-radius: 4px;
+            padding: 1rem;
+        }
+
+        .account-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .account-item:hover {
+            background-color: var(--sa-gray-light);
+        }
+
+        .account-item input[type="checkbox"] {
+            margin-right: 1rem;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .account-info {
+            flex: 1;
+        }
+
+        .account-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .account-id {
+            font-size: 0.875rem;
+            color: var(--sa-gray-dark);
+        }
+
+        /* Hidden by default */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Charts Container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 2rem;
+        }
+
+        /* Export Buttons */
+        .export-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="#" class="logo">
+                Success Academies <span>AI Cost Calculator</span>
+            </a>
+            <div id="authStatus">
+                <span class="auth-status">Not Authenticated</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Progress Steps -->
+        <div class="progress-steps">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <div class="step-label">Configure SSO</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <div class="step-label">Select Accounts</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <div class="step-label">Discover Resources</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="step-number">4</div>
+                <div class="step-label">Calculate Costs</div>
+            </div>
+        </div>
+
+        <!-- Step 1: SSO Configuration -->
+        <div class="card" id="ssoConfig">
+            <div class="card-header">
+                <h2 class="card-title">AWS SSO Configuration</h2>
+            </div>
+            <div class="alert alert-info">
+                Enter your AWS SSO URL to authenticate via Okta
+            </div>
+            <form id="ssoForm">
+                <div class="form-group">
+                    <label class="form-label" for="ssoUrl">SSO Start URL</label>
+                    <input 
+                        type="url" 
+                        id="ssoUrl" 
+                        class="form-input" 
+                        placeholder="https://d-9067640efb.awsapps.com/start"
+                        value="https://d-9067640efb.awsapps.com/start"
+                        required
+                    >
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="ssoRegion">AWS Region</label>
+                    <input 
+                        type="text" 
+                        id="ssoRegion" 
+                        class="form-input" 
+                        value="us-east-1"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    Configure & Authenticate
+                </button>
+            </form>
+        </div>
+
+        <!-- Step 2: Account Selection -->
+        <div class="card hidden" id="accountSelection">
+            <div class="card-header">
+                <h2 class="card-title">Select AWS Accounts</h2>
+                <button class="btn btn-outline" id="selectAllBtn">Select All</button>
+            </div>
+            <div class="account-list" id="accountList">
+                <!-- Accounts will be populated here -->
+            </div>
+            <div style="margin-top: 2rem;">
+                <button class="btn btn-primary" id="continueToDiscovery">
+                    Continue to Discovery
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Resource Discovery -->
+        <div class="card hidden" id="resourceDiscovery">
+            <div class="card-header">
+                <h2 class="card-title">Configure Analysis Period</h2>
+            </div>
+            
+            <!-- Date Selection -->
+            <div id="dateSelection" style="margin-bottom: 2rem;">
+                <div class="form-group">
+                    <label class="form-label">Select Date Range</label>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <button class="btn btn-outline" onclick="setDatePreset('current')">Current Month</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('last30')">Last 30 Days</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('last90')">Last 90 Days</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('lastMonth')">Last Month</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="startDate">From Date</label>
+                        <input type="date" id="startDate" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="endDate">To Date</label>
+                        <input type="date" id="endDate" class="form-input" required>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="startDiscoveryWithDates()">
+                    Start Resource Discovery
+                </button>
+            </div>
+            
+            <div id="discoveryProgress" class="hidden">
+                <div class="alert alert-info">
+                    <span class="spinner"></span>
+                    <span style="margin-left: 1rem;">Scanning AWS accounts for AI services...</span>
+                </div>
+            </div>
+            <div id="discoveryResults" class="hidden">
+                <!-- Discovery results will be shown here -->
+            </div>
+        </div>
+
+        <!-- Step 4: Cost Analysis -->
+        <div class="card hidden" id="costAnalysis">
+            <div class="card-header">
+                <h2 class="card-title">AI Cost Analysis</h2>
+                <div class="export-buttons">
+                    <button class="btn btn-outline" onclick="exportResults('csv')">Export CSV</button>
+                    <button class="btn btn-outline" onclick="exportResults('json')">Export JSON</button>
+                </div>
+            </div>
+            
+            <!-- Summary Metrics -->
+            <div class="results-grid" id="summaryMetrics">
+                <div class="metric-card">
+                    <div class="metric-value" id="totalCost">$0.00</div>
+                    <div class="metric-label">Total Monthly Cost</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="dailyAverage">$0.00</div>
+                    <div class="metric-label">Daily Average</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="projectedCost">$0.00</div>
+                    <div class="metric-label">Projected (57 Schools)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="resourceCount">0</div>
+                    <div class="metric-label">AI Resources Found</div>
+                </div>
+            </div>
+
+            <!-- Cost Breakdown Table -->
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--sa-blue);">Cost Breakdown by Service</h3>
+            <table class="cost-table" id="costTable">
+                <thead>
+                    <tr>
+                        <th>Account</th>
+                        <th>Service</th>
+                        <th>Monthly Cost</th>
+                        <th>Project</th>
+                    </tr>
+                </thead>
+                <tbody id="costTableBody">
+                    <!-- Cost data will be populated here -->
+                </tbody>
+            </table>
+
+            <!-- Chart Container -->
+            <div class="chart-container" id="costChart">
+                <!-- Chart will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Global state
+        let currentStep = 1;
+        let sessionId = null;
+        let discoveryData = null;
+        let costData = null;
+        let selectedDates = {
+            startDate: null,
+            endDate: null
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthStatus();
+            setupEventListeners();
+        });
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('ssoForm').addEventListener('submit', handleSSOConfig);
+            document.getElementById('selectAllBtn').addEventListener('click', selectAllAccounts);
+            document.getElementById('continueToDiscovery').addEventListener('click', startDiscovery);
+        }
+
+        // Check authentication status
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/status');
+                const data = await response.json();
+                
+                if (data.authenticated) {
+                    sessionId = data.session_id;
+                    updateAuthStatus(true);
+                }
+            } catch (error) {
+                console.error('Error checking auth status:', error);
+            }
+        }
+
+        // Update authentication status display
+        function updateAuthStatus(authenticated) {
+            const statusEl = document.querySelector('.auth-status');
+            if (authenticated) {
+                statusEl.textContent = 'Authenticated';
+                statusEl.style.color = 'var(--sa-orange)';
+            } else {
+                statusEl.textContent = 'Not Authenticated';
+                statusEl.style.color = 'var(--sa-gray-dark)';
+            }
+        }
+
+        // Handle SSO configuration
+        async function handleSSOConfig(e) {
+            e.preventDefault();
+            
+            const ssoUrl = document.getElementById('ssoUrl').value;
+            const ssoRegion = document.getElementById('ssoRegion').value;
+            
+            showLoading('Configuring SSO...');
+            
+            try {
+                // Configure SSO
+                const configResponse = await fetch('/api/auth/configure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sso_url: ssoUrl, sso_region: ssoRegion })
+                });
+                
+                const configData = await configResponse.json();
+                if (!configResponse.ok) throw new Error(configData.error);
+                
+                sessionId = configData.session_id;
+                
+                // Start authentication
+                showLoading('Starting authentication... Check your browser for SSO login.');
+                
+                const authResponse = await fetch('/api/auth/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const authData = await authResponse.json();
+                if (!authResponse.ok) throw new Error(authData.error);
+                
+                // Wait a bit for auth to complete
+                setTimeout(async () => {
+                    await loadAccounts();
+                }, 3000);
+                
+            } catch (error) {
+                hideLoading();
+                showError('Authentication failed: ' + error.message);
+            }
+        }
+
+        // Load AWS accounts
+        async function loadAccounts() {
+            try {
+                const response = await fetch('/api/accounts/list');
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.error);
+                
+                displayAccounts(data.accounts);
+                updateAuthStatus(true);
+                moveToStep(2);
+                hideLoading();
+                
+            } catch (error) {
+                hideLoading();
+                showError('Failed to load accounts: ' + error.message);
+            }
+        }
+
+        // Display accounts for selection
+        function displayAccounts(accounts) {
+            const accountList = document.getElementById('accountList');
+            accountList.innerHTML = '';
+            
+            accounts.forEach(account => {
+                const accountItem = document.createElement('div');
+                accountItem.className = 'account-item';
+                accountItem.innerHTML = `
+                    <input type="checkbox" id="account-${account.accountId}" value="${account.accountId}">
+                    <div class="account-info">
+                        <div class="account-name">${account.accountName || 'Unnamed Account'}</div>
+                        <div class="account-id">${account.accountId}</div>
+                    </div>
+                `;
+                accountList.appendChild(accountItem);
+            });
+        }
+
+        // Select all accounts
+        function selectAllAccounts() {
+            const checkboxes = document.querySelectorAll('#accountList input[type="checkbox"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            
+            checkboxes.forEach(cb => {
+                cb.checked = !allChecked;
+            });
+            
+            document.getElementById('selectAllBtn').textContent = allChecked ? 'Select All' : 'Deselect All';
+        }
+
+        // Set date preset values
+        function setDatePreset(preset) {
+            const today = new Date();
+            let startDate, endDate;
+            
+            switch(preset) {
+                case 'current':
+                    // Current month
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    endDate = today;
+                    break;
+                case 'last30':
+                    // Last 30 days
+                    startDate = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+                    endDate = today;
+                    break;
+                case 'last90':
+                    // Last 90 days
+                    startDate = new Date(today.getTime() - (90 * 24 * 60 * 60 * 1000));
+                    endDate = today;
+                    break;
+                case 'lastMonth':
+                    // Last month
+                    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    startDate = lastMonth;
+                    endDate = new Date(today.getFullYear(), today.getMonth(), 0); // Last day of previous month
+                    break;
+            }
+            
+            // Set the date inputs
+            document.getElementById('startDate').value = formatDateForInput(startDate);
+            document.getElementById('endDate').value = formatDateForInput(endDate);
+        }
+        
+        // Format date for HTML input
+        function formatDateForInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Start resource discovery
+        async function startDiscovery() {
+            const selectedAccounts = Array.from(document.querySelectorAll('#accountList input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+            
+            if (selectedAccounts.length === 0) {
+                showError('Please select at least one account');
+                return;
+            }
+            
+            moveToStep(3);
+            
+            // Set default dates to current month
+            setDatePreset('current');
+        }
+        
+        // Start discovery with selected dates
+        async function startDiscoveryWithDates() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                showError('Please select both start and end dates');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                showError('Start date must be before end date');
+                return;
+            }
+            
+            // Store selected dates
+            selectedDates.startDate = startDate;
+            selectedDates.endDate = endDate;
+            
+            // Hide date selection, show progress
+            document.getElementById('dateSelection').classList.add('hidden');
+            document.getElementById('discoveryProgress').classList.remove('hidden');
+            
+            try {
+                // Start discovery with dates
+                const response = await fetch('/api/discover', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        start_date: startDate,
+                        end_date: endDate
+                    })
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                
+                discoveryData = data.discoveries;
+                displayDiscoveryResults(data.discoveries);
+                
+                // Automatically start cost calculation
+                setTimeout(() => calculateCosts(), 1000);
+                
+            } catch (error) {
+                showError('Discovery failed: ' + error.message);
+                // Show date selection again on error
+                document.getElementById('dateSelection').classList.remove('hidden');
+                document.getElementById('discoveryProgress').classList.add('hidden');
+            }
+        }
+
+        // Display discovery results
+        function displayDiscoveryResults(discoveries) {
+            const resultsDiv = document.getElementById('discoveryResults');
+            const progressDiv = document.getElementById('discoveryProgress');
+            
+            progressDiv.classList.add('hidden');
+            resultsDiv.classList.remove('hidden');
+            
+            let totalResources = 0;
+            let html = '<h3>AI Resources Discovered:</h3><ul>';
+            
+            discoveries.forEach(discovery => {
+                const count = discovery.summary.total_ai_resources;
+                totalResources += count;
+                html += `<li><strong>${discovery.account}:</strong> ${count} resources found</li>`;
+            });
+            
+            html += '</ul>';
+            html += `<p style="margin-top: 1rem;"><strong>Total:</strong> ${totalResources} AI resources</p>`;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // Calculate costs
+        async function calculateCosts() {
+            moveToStep(4);
+            showLoading('Calculating costs...');
+            
+            try {
+                const response = await fetch('/api/costs/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        start_date: selectedDates.startDate,
+                        end_date: selectedDates.endDate
+                    })
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+                
+                costData = data;
+                displayCostResults(data);
+                hideLoading();
+                
+            } catch (error) {
+                hideLoading();
+                showError('Cost calculation failed: ' + error.message);
+            }
+        }
+
+        // Display cost results
+        function displayCostResults(data) {
+            // Update summary metrics
+            document.getElementById('totalCost').textContent = `$${data.grand_total.toFixed(2)}`;
+            document.getElementById('dailyAverage').textContent = `$${data.daily_average.toFixed(2)}`;
+            document.getElementById('projectedCost').textContent = `$${data.projection_57_schools.toFixed(2)}`;
+            
+            // Count total resources
+            let totalResources = 0;
+            if (discoveryData) {
+                discoveryData.forEach(d => {
+                    totalResources += d.summary.total_ai_resources;
+                });
+            }
+            document.getElementById('resourceCount').textContent = totalResources;
+            
+            // Populate cost table
+            const tableBody = document.getElementById('costTableBody');
+            tableBody.innerHTML = '';
+            
+            data.costs_by_account.forEach(accountCosts => {
+                const accountName = accountCosts.account;
+                
+                // Add service costs
+                Object.entries(accountCosts.services || {}).forEach(([service, cost]) => {
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${accountName}</td>
+                        <td>${service.toUpperCase()}</td>
+                        <td>$${cost.toFixed(2)}</td>
+                        <td>All Projects</td>
+                    `;
+                });
+                
+                // Add project costs
+                Object.entries(accountCosts.projects || {}).forEach(([project, cost]) => {
+                    if (cost > 0) {
+                        const row = tableBody.insertRow();
+                        row.innerHTML = `
+                            <td>${accountName}</td>
+                            <td>Multiple</td>
+                            <td>$${cost.toFixed(2)}</td>
+                            <td>${project}</td>
+                        `;
+                    }
+                });
+            });
+            
+            // Create chart
+            createCostChart(data);
+        }
+
+        // Create cost chart
+        function createCostChart(data) {
+            const ctx = document.getElementById('costChart').getContext('2d');
+            
+            // Aggregate costs by service
+            const serviceCosts = {};
+            data.costs_by_account.forEach(accountCosts => {
+                Object.entries(accountCosts.services || {}).forEach(([service, cost]) => {
+                    serviceCosts[service] = (serviceCosts[service] || 0) + cost;
+                });
+            });
+            
+            const chartData = {
+                labels: Object.keys(serviceCosts).map(s => s.toUpperCase()),
+                datasets: [{
+                    label: 'Cost by Service',
+                    data: Object.values(serviceCosts),
+                    backgroundColor: [
+                        '#005e9e',
+                        '#f7941e',
+                        '#4CAF50',
+                        '#FF5252',
+                        '#9C27B0',
+                        '#00BCD4'
+                    ]
+                }]
+            };
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = '$' + context.parsed.toFixed(2);
+                                    return label + ': ' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Export results
+        async function exportResults(format) {
+            try {
+                const response = await fetch(`/api/export/${format}`);
+                
+                if (format === 'csv') {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ai_costs_${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                } else {
+                    const data = await response.json();
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ai_costs_${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                }
+            } catch (error) {
+                showError('Export failed: ' + error.message);
+            }
+        }
+
+        // UI Helper Functions
+        function moveToStep(step) {
+            // Hide all cards
+            document.querySelectorAll('.card').forEach(card => card.classList.add('hidden'));
+            
+            // Show current step card
+            const cards = ['ssoConfig', 'accountSelection', 'resourceDiscovery', 'costAnalysis'];
+            document.getElementById(cards[step - 1]).classList.remove('hidden');
+            
+            // Update progress steps
+            for (let i = 1; i <= 4; i++) {
+                const stepEl = document.getElementById(`step${i}`);
+                stepEl.classList.remove('active', 'completed');
+                
+                if (i < step) {
+                    stepEl.classList.add('completed');
+                } else if (i === step) {
+                    stepEl.classList.add('active');
+                }
+            }
+            
+            currentStep = step;
+        }
+
+        function showLoading(message) {
+            // Could implement a loading overlay
+            console.log('Loading:', message);
+        }
+
+        function hideLoading() {
+            // Hide loading overlay
+            console.log('Loading complete');
+        }
+
+        function showError(message) {
+            // Could implement a toast notification
+            alert('Error: ' + message);
+        }
+    </script>
+</body>
+</html>

@@ -30,18 +30,25 @@ class SSOCostCalculator:
         self.discovered_resources = []
         
     def calculate_costs_for_resources(self, session: boto3.Session, account_name: str, 
-                                    discovered: Dict) -> Dict:
+                                    discovered: Dict, start_date: str = None, end_date: str = None) -> Dict:
         """Calculate costs for discovered AI resources"""
         ce_client = session.client('ce', region_name='us-east-1')
         
-        # Get current month date range
-        today = datetime.now()
-        start_date = today.replace(day=1).strftime('%Y-%m-%d')
-        end_date = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+        # Use provided dates or default to current month
+        if not start_date or not end_date:
+            today = datetime.now()
+            start_date = today.replace(day=1).strftime('%Y-%m-%d')
+            display_end_date = today.strftime('%Y-%m-%d')
+            ce_end_date = (today + timedelta(days=1)).strftime('%Y-%m-%d')
+        else:
+            # AWS Cost Explorer needs the day after the end date
+            display_end_date = end_date
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+            ce_end_date = (end_date_obj + timedelta(days=1)).strftime('%Y-%m-%d')
         
         costs = {
             'account': account_name,
-            'period': f"{start_date} to {today.strftime('%Y-%m-%d')}",
+            'period': f"{start_date} to {display_end_date}",
             'services': {},
             'projects': {},
             'total': Decimal('0')
@@ -67,7 +74,7 @@ class SSOCostCalculator:
                 task = progress.add_task(f"[cyan]Calculating Lambda costs for {account_name}...", total=None)
                 lambda_cost = self._calculate_lambda_costs(
                     ce_client, discovered['services']['lambda'], 
-                    start_date, end_date, account_id
+                    start_date, ce_end_date, account_id
                 )
                 if lambda_cost > 0:
                     costs['services']['lambda'] = lambda_cost
@@ -79,7 +86,7 @@ class SSOCostCalculator:
                 task = progress.add_task(f"[cyan]Calculating S3 costs for {account_name}...", total=None)
                 s3_cost = self._calculate_s3_costs(
                     ce_client, discovered['services']['s3'],
-                    start_date, end_date, account_id
+                    start_date, ce_end_date, account_id
                 )
                 if s3_cost > 0:
                     costs['services']['s3'] = s3_cost
@@ -91,7 +98,7 @@ class SSOCostCalculator:
                 task = progress.add_task(f"[cyan]Calculating DynamoDB costs for {account_name}...", total=None)
                 dynamodb_cost = self._calculate_dynamodb_costs(
                     ce_client, discovered['services']['dynamodb'],
-                    start_date, end_date, account_id
+                    start_date, ce_end_date, account_id
                 )
                 if dynamodb_cost > 0:
                     costs['services']['dynamodb'] = dynamodb_cost
@@ -101,7 +108,7 @@ class SSOCostCalculator:
             # Bedrock costs (100% AI)
             task = progress.add_task(f"[cyan]Calculating Bedrock costs for {account_name}...", total=None)
             bedrock_cost = self._calculate_service_costs(
-                ce_client, 'Amazon Bedrock', start_date, end_date, account_id
+                ce_client, 'Amazon Bedrock', start_date, ce_end_date, account_id
             )
             if bedrock_cost > 0:
                 costs['services']['bedrock'] = bedrock_cost
@@ -111,7 +118,7 @@ class SSOCostCalculator:
             # Kendra costs (100% AI)
             task = progress.add_task(f"[cyan]Calculating Kendra costs for {account_name}...", total=None)
             kendra_cost = self._calculate_service_costs(
-                ce_client, 'Amazon Kendra', start_date, end_date, account_id
+                ce_client, 'Amazon Kendra', start_date, ce_end_date, account_id
             )
             if kendra_cost > 0:
                 costs['services']['kendra'] = kendra_cost
