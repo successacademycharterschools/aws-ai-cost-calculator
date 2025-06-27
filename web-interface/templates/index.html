@@ -232,6 +232,96 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .loading-content {
+            background: var(--sa-white);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .loading-spinner-large {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--sa-gray-medium);
+            border-top-color: var(--sa-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        .loading-text {
+            font-size: 1.1rem;
+            color: var(--sa-gray-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .loading-details {
+            font-size: 0.875rem;
+            color: var(--sa-gray-dark);
+            opacity: 0.8;
+        }
+        
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: var(--sa-gray-medium);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--sa-orange);
+            transition: width 0.3s ease;
+        }
+        
+        /* Date preset buttons */
+        .date-preset-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        
+        .date-preset-buttons .btn-outline {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .date-preset-buttons .btn-outline.active {
+            background-color: var(--sa-blue);
+            color: var(--sa-white);
+        }
 
         /* Alerts */
         .alert {
@@ -378,6 +468,18 @@
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="loading-spinner-large"></div>
+            <div class="loading-text" id="loadingText">Processing...</div>
+            <div class="loading-details" id="loadingDetails"></div>
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Header -->
     <header class="header">
         <div class="header-content">
@@ -474,29 +576,95 @@
             <div id="dateSelection" style="margin-bottom: 2rem;">
                 <div class="form-group">
                     <label class="form-label">Select Date Range</label>
-                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                        <button class="btn btn-outline" onclick="setDatePreset('current')">Current Month</button>
-                        <button class="btn btn-outline" onclick="setDatePreset('last30')">Last 30 Days</button>
-                        <button class="btn btn-outline" onclick="setDatePreset('last90')">Last 90 Days</button>
-                        <button class="btn btn-outline" onclick="setDatePreset('lastMonth')">Last Month</button>
+                    <div class="date-preset-buttons">
+                        <button class="btn btn-outline" onclick="setDatePreset('current')" data-preset="current">Current Month</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('last30')" data-preset="last30">Last 30 Days</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('last90')" data-preset="last90">Last 90 Days</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('lastMonth')" data-preset="lastMonth">Last Month</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('ytd')" data-preset="ytd">Year to Date</button>
+                        <button class="btn btn-outline" onclick="setDatePreset('custom')" data-preset="custom">Custom Range</button>
                     </div>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="form-group">
                         <label class="form-label" for="startDate">From Date</label>
-                        <input type="date" id="startDate" class="form-input" required>
+                        <input type="date" id="startDate" class="form-input" required onchange="updateDatePresetButtons()">
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="endDate">To Date</label>
-                        <input type="date" id="endDate" class="form-input" required>
+                        <input type="date" id="endDate" class="form-input" required onchange="updateDatePresetButtons()">
                     </div>
                 </div>
                 
-                <button class="btn btn-primary" onclick="startDiscoveryWithDates()">
-                    Start Resource Discovery
-                </button>
+                <div style="margin-top: 1rem;">
+                    <small class="text-muted" id="dateRangeInfo"></small>
+                </div>
             </div>
+            
+            <!-- Manual Service Selection -->
+            <div id="serviceSelection" style="margin-bottom: 2rem;">
+                <div class="form-group">
+                    <label class="form-label">Additional AWS Services to Include</label>
+                    <div class="alert alert-info">
+                        Select additional services that might contain AI-related costs. The system will automatically discover Lambda, S3, DynamoDB, Bedrock, and API Gateway resources.
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-sns" value="sns">
+                            <span>SNS (Simple Notification Service)</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-eventbridge" value="events">
+                            <span>EventBridge</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-sqs" value="sqs">
+                            <span>SQS (Simple Queue Service)</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-cloudwatch" value="cloudwatch">
+                            <span>CloudWatch Logs</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-ecr" value="ecr">
+                            <span>ECR (Container Registry)</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-ecs" value="ecs">
+                            <span>ECS/Fargate</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-stepfunctions" value="states">
+                            <span>Step Functions</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-glue" value="glue">
+                            <span>Glue</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Account Filter (Failsafe) -->
+            <div id="accountFilter" style="margin-bottom: 2rem;">
+                <div class="form-group">
+                    <label class="form-label">Account Filter (Failsafe)</label>
+                    <div class="alert alert-info">
+                        Only include resources from the selected account(s) to prevent including unrelated resources.
+                    </div>
+                    <select id="primaryAccountFilter" class="form-input">
+                        <option value="all">All Selected Accounts</option>
+                        <option value="sandbox">Sandbox Only</option>
+                        <option value="nonprod">Non-Prod Only</option>
+                        <option value="prod">Production Only</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="startDiscoveryWithDates()">
+                Start Resource Discovery
+            </button>
             
             <div id="discoveryProgress" class="hidden">
                 <div class="alert alert-info">
@@ -514,8 +682,15 @@
             <div class="card-header">
                 <h2 class="card-title">AI Cost Analysis</h2>
                 <div class="export-buttons">
-                    <button class="btn btn-outline" onclick="exportResults('csv')">Export CSV</button>
-                    <button class="btn btn-outline" onclick="exportResults('json')">Export JSON</button>
+                    <button class="btn btn-outline" onclick="exportResults('csv')">
+                        <span style="margin-right: 0.5rem;">📊</span> Export CSV
+                    </button>
+                    <button class="btn btn-outline" onclick="exportResults('json')">
+                        <span style="margin-right: 0.5rem;">📄</span> Export JSON
+                    </button>
+                    <button class="btn btn-primary" onclick="generateDetailedReport()">
+                        <span style="margin-right: 0.5rem;">📈</span> Generate Report
+                    </button>
                 </div>
             </div>
             
@@ -556,8 +731,8 @@
             </table>
 
             <!-- Chart Container -->
-            <div class="chart-container" id="costChart">
-                <!-- Chart will be rendered here -->
+            <div class="chart-container">
+                <canvas id="costChart"></canvas>
             </div>
         </div>
     </div>
@@ -591,7 +766,9 @@
         // Check authentication status
         async function checkAuthStatus() {
             try {
-                const response = await fetch('/api/auth/status');
+                const response = await fetch('/api/auth/status', {
+                    credentials: 'same-origin'
+                });
                 const data = await response.json();
                 
                 if (data.authenticated) {
@@ -622,47 +799,94 @@
             const ssoUrl = document.getElementById('ssoUrl').value;
             const ssoRegion = document.getElementById('ssoRegion').value;
             
+            console.log('Starting SSO configuration with:', { ssoUrl, ssoRegion });
             showLoading('Configuring SSO...');
             
             try {
                 // Configure SSO
+                console.log('Sending configuration request...');
                 const configResponse = await fetch('/api/auth/configure', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sso_url: ssoUrl, sso_region: ssoRegion })
+                    body: JSON.stringify({ sso_url: ssoUrl, sso_region: ssoRegion }),
+                    credentials: 'same-origin'
                 });
                 
-                const configData = await configResponse.json();
-                if (!configResponse.ok) throw new Error(configData.error);
+                console.log('Config response status:', configResponse.status);
+                
+                let configData;
+                try {
+                    configData = await configResponse.json();
+                } catch (jsonError) {
+                    console.error('Failed to parse config response:', jsonError);
+                    throw new Error('Invalid response from server');
+                }
+                
+                if (!configResponse.ok) {
+                    console.error('Config failed:', configData);
+                    throw new Error(configData.error || 'Configuration failed');
+                }
                 
                 sessionId = configData.session_id;
+                console.log('Session configured:', sessionId);
                 
                 // Start authentication
-                showLoading('Starting authentication... Check your browser for SSO login.');
+                showLoading('Starting authentication... A new browser window will open for SSO login.');
                 
+                console.log('Starting authentication...');
                 const authResponse = await fetch('/api/auth/start', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin'
                 });
                 
-                const authData = await authResponse.json();
-                if (!authResponse.ok) throw new Error(authData.error);
+                console.log('Auth response status:', authResponse.status);
+                
+                let authData;
+                try {
+                    authData = await authResponse.json();
+                } catch (jsonError) {
+                    console.error('Failed to parse auth response:', jsonError);
+                    throw new Error('Invalid authentication response');
+                }
+                
+                if (!authResponse.ok) {
+                    console.error('Auth failed:', authData);
+                    throw new Error(authData.error || 'Authentication failed');
+                }
+                
+                console.log('Authentication started:', authData);
+                
+                // Show message about browser window
+                showLoading('Please complete the login in the new browser window...');
                 
                 // Wait a bit for auth to complete
                 setTimeout(async () => {
+                    console.log('Checking authentication status...');
                     await loadAccounts();
-                }, 3000);
+                }, 5000);
                 
             } catch (error) {
+                console.error('Authentication error:', error);
                 hideLoading();
-                showError('Authentication failed: ' + error.message);
+                
+                // Provide more helpful error messages
+                if (error.message.includes('Failed to fetch')) {
+                    showError('Network error: Unable to connect to the server. Please check if the server is running on http://localhost:5000');
+                } else if (error.message.includes('NetworkError')) {
+                    showError('Network error: Please check your internet connection and try again.');
+                } else {
+                    showError('Authentication failed: ' + error.message);
+                }
             }
         }
 
         // Load AWS accounts
         async function loadAccounts() {
             try {
-                const response = await fetch('/api/accounts/list');
+                const response = await fetch('/api/accounts/list', {
+                    credentials: 'same-origin'
+                });
                 const data = await response.json();
                 
                 if (!response.ok) throw new Error(data.error);
@@ -714,6 +938,15 @@
             const today = new Date();
             let startDate, endDate;
             
+            // Remove active class from all preset buttons
+            document.querySelectorAll('.date-preset-buttons .btn-outline').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to clicked button
+            const activeBtn = document.querySelector(`[data-preset="${preset}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+            
             switch(preset) {
                 case 'current':
                     // Current month
@@ -736,11 +969,23 @@
                     startDate = lastMonth;
                     endDate = new Date(today.getFullYear(), today.getMonth(), 0); // Last day of previous month
                     break;
+                case 'ytd':
+                    // Year to date
+                    startDate = new Date(today.getFullYear(), 0, 1);
+                    endDate = today;
+                    break;
+                case 'custom':
+                    // Don't change dates for custom
+                    updateDateRangeInfo();
+                    return;
             }
             
             // Set the date inputs
             document.getElementById('startDate').value = formatDateForInput(startDate);
             document.getElementById('endDate').value = formatDateForInput(endDate);
+            
+            // Update date range info
+            updateDateRangeInfo();
         }
         
         // Format date for HTML input
@@ -749,6 +994,35 @@
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+        
+        // Update date preset buttons based on selected dates
+        function updateDatePresetButtons() {
+            // Mark as custom if dates don't match any preset
+            document.querySelectorAll('.date-preset-buttons .btn-outline').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector('[data-preset="custom"]').classList.add('active');
+            updateDateRangeInfo();
+        }
+        
+        // Update date range info text
+        function updateDateRangeInfo() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const infoEl = document.getElementById('dateRangeInfo');
+            
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                
+                infoEl.textContent = `Date range: ${days} day${days !== 1 ? 's' : ''} (${start.toLocaleDateString()} - ${end.toLocaleDateString()})`;
+                infoEl.style.color = 'var(--sa-gray-dark)';
+            } else {
+                infoEl.textContent = 'Please select both start and end dates';
+                infoEl.style.color = 'var(--sa-orange)';
+            }
         }
         
         // Start resource discovery
@@ -761,10 +1035,32 @@
                 return;
             }
             
-            moveToStep(3);
-            
-            // Set default dates to current month
-            setDatePreset('current');
+            // Save selected accounts to backend
+            try {
+                showLoading('Saving account selection...');
+                const response = await fetch('/api/accounts/select', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ account_ids: selectedAccounts }),
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to save account selection');
+                }
+                
+                console.log(`Selected ${data.selected_count} accounts`);
+                hideLoading();
+                
+                moveToStep(3);
+                
+                // Initialize date selector
+                initializeDateSelector();
+            } catch (error) {
+                hideLoading();
+                showError('Failed to save account selection: ' + error.message);
+            }
         }
         
         // Start discovery with selected dates
@@ -782,38 +1078,77 @@
                 return;
             }
             
+            // Get selected additional services
+            const additionalServices = [];
+            document.querySelectorAll('#serviceSelection input[type="checkbox"]:checked').forEach(cb => {
+                additionalServices.push(cb.value);
+            });
+            
+            // Get account filter
+            const accountFilter = document.getElementById('primaryAccountFilter').value;
+            
             // Store selected dates
             selectedDates.startDate = startDate;
             selectedDates.endDate = endDate;
             
-            // Hide date selection, show progress
+            // Hide configuration sections, show progress
             document.getElementById('dateSelection').classList.add('hidden');
+            document.getElementById('serviceSelection').classList.add('hidden');
+            document.getElementById('accountFilter').classList.add('hidden');
             document.getElementById('discoveryProgress').classList.remove('hidden');
             
             try {
-                // Start discovery with dates
+                showLoading('Discovering AI Resources', 'Scanning AWS accounts for AI services...', true);
+                
+                // Simulate progress updates
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 10;
+                    if (progress <= 90) {
+                        updateProgress(progress);
+                        
+                        // Update details based on progress
+                        if (progress === 20) updateLoadingDetails('Checking Lambda functions...');
+                        if (progress === 40) updateLoadingDetails('Scanning S3 buckets and DynamoDB tables...');
+                        if (progress === 60) updateLoadingDetails('Discovering Bedrock resources...');
+                        if (progress === 80) updateLoadingDetails('Analyzing additional services...');
+                    }
+                }, 500);
+                
+                // Start discovery with dates and additional services
                 const response = await fetch('/api/discover', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         start_date: startDate,
-                        end_date: endDate
+                        end_date: endDate,
+                        additional_services: additionalServices,
+                        account_filter: accountFilter
                     })
                 });
+                
+                clearInterval(progressInterval);
+                updateProgress(100);
                 
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
                 
                 discoveryData = data.discoveries;
+                hideLoading();
+                
                 displayDiscoveryResults(data.discoveries);
+                showSuccess(`Found ${data.discoveries.reduce((sum, d) => sum + d.summary.total_ai_resources, 0)} AI resources!`);
                 
                 // Automatically start cost calculation
                 setTimeout(() => calculateCosts(), 1000);
                 
             } catch (error) {
+                hideLoading();
                 showError('Discovery failed: ' + error.message);
-                // Show date selection again on error
+                // Show configuration sections again on error
                 document.getElementById('dateSelection').classList.remove('hidden');
+                document.getElementById('serviceSelection').classList.remove('hidden');
+                document.getElementById('accountFilter').classList.remove('hidden');
                 document.getElementById('discoveryProgress').classList.add('hidden');
             }
         }
@@ -844,9 +1179,24 @@
         // Calculate costs
         async function calculateCosts() {
             moveToStep(4);
-            showLoading('Calculating costs...');
+            showLoading('Calculating AI Costs', 'Analyzing resource usage and calculating costs...', true);
             
             try {
+                // Simulate progress
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 15;
+                    if (progress <= 90) {
+                        updateProgress(progress);
+                        
+                        if (progress === 15) updateLoadingDetails('Retrieving cost data from AWS Cost Explorer...');
+                        if (progress === 30) updateLoadingDetails('Calculating Lambda function costs...');
+                        if (progress === 45) updateLoadingDetails('Analyzing storage costs (S3, DynamoDB)...');
+                        if (progress === 60) updateLoadingDetails('Processing AI service costs (Bedrock, etc.)...');
+                        if (progress === 75) updateLoadingDetails('Aggregating costs by project and service...');
+                    }
+                }, 400);
+                
                 const response = await fetch('/api/costs/calculate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -856,12 +1206,18 @@
                     })
                 });
                 
+                clearInterval(progressInterval);
+                updateProgress(100);
+                
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
                 
                 costData = data;
-                displayCostResults(data);
                 hideLoading();
+                displayCostResults(data);
+                
+                // Show summary
+                showSuccess(`Total AI costs: $${data.grand_total.toFixed(2)} for ${data.period}`);
                 
             } catch (error) {
                 hideLoading();
@@ -885,6 +1241,9 @@
             }
             document.getElementById('resourceCount').textContent = totalResources;
             
+            // Known AI projects
+            const knownAIProjects = ['Ask Eva', 'IEP Report', 'Resume Knockout', 'Resume Scoring', 'Financial Aid', 'Unknown'];
+            
             // Populate cost table
             const tableBody = document.getElementById('costTableBody');
             tableBody.innerHTML = '';
@@ -892,20 +1251,33 @@
             data.costs_by_account.forEach(accountCosts => {
                 const accountName = accountCosts.account;
                 
+                // Filter to only show AI-related accounts (sandbox, non-prod, prod)
+                const aiAccountKeywords = ['sandbox', 'non-prod', 'nonprod', 'prod', 'production'];
+                const isAIAccount = aiAccountKeywords.some(keyword => 
+                    accountName.toLowerCase().includes(keyword)
+                );
+                
+                if (!isAIAccount) {
+                    console.log(`Filtering out non-AI account: ${accountName}`);
+                    return; // Skip non-AI accounts
+                }
+                
                 // Add service costs
                 Object.entries(accountCosts.services || {}).forEach(([service, cost]) => {
-                    const row = tableBody.insertRow();
-                    row.innerHTML = `
-                        <td>${accountName}</td>
-                        <td>${service.toUpperCase()}</td>
-                        <td>$${cost.toFixed(2)}</td>
-                        <td>All Projects</td>
-                    `;
+                    if (cost > 0) {
+                        const row = tableBody.insertRow();
+                        row.innerHTML = `
+                            <td>${accountName}</td>
+                            <td>${service.toUpperCase()}</td>
+                            <td>$${cost.toFixed(2)}</td>
+                            <td>AI Services</td>
+                        `;
+                    }
                 });
                 
-                // Add project costs
+                // Add project costs - only show known AI projects
                 Object.entries(accountCosts.projects || {}).forEach(([project, cost]) => {
-                    if (cost > 0) {
+                    if (cost > 0 && knownAIProjects.includes(project)) {
                         const row = tableBody.insertRow();
                         row.innerHTML = `
                             <td>${accountName}</td>
@@ -917,6 +1289,16 @@
                 });
             });
             
+            // If no rows were added, show a message
+            if (tableBody.rows.length === 0) {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td colspan="4" style="text-align: center; color: var(--sa-gray-dark);">
+                        No AI-related costs found for the selected period
+                    </td>
+                `;
+            }
+            
             // Create chart
             createCostChart(data);
         }
@@ -925,13 +1307,31 @@
         function createCostChart(data) {
             const ctx = document.getElementById('costChart').getContext('2d');
             
-            // Aggregate costs by service
+            // Filter for AI accounts only
+            const aiAccountKeywords = ['sandbox', 'non-prod', 'nonprod', 'prod', 'production'];
+            
+            // Aggregate costs by service (only from AI accounts)
             const serviceCosts = {};
             data.costs_by_account.forEach(accountCosts => {
-                Object.entries(accountCosts.services || {}).forEach(([service, cost]) => {
-                    serviceCosts[service] = (serviceCosts[service] || 0) + cost;
-                });
+                const accountName = accountCosts.account;
+                const isAIAccount = aiAccountKeywords.some(keyword => 
+                    accountName.toLowerCase().includes(keyword)
+                );
+                
+                if (isAIAccount) {
+                    Object.entries(accountCosts.services || {}).forEach(([service, cost]) => {
+                        if (cost > 0) {
+                            serviceCosts[service] = (serviceCosts[service] || 0) + cost;
+                        }
+                    });
+                }
             });
+            
+            // Only create chart if there's data
+            if (Object.keys(serviceCosts).length === 0) {
+                document.getElementById('costChart').innerHTML = '<p style="text-align: center; color: var(--sa-gray-dark);">No cost data to display</p>';
+                return;
+            }
             
             const chartData = {
                 labels: Object.keys(serviceCosts).map(s => s.toUpperCase()),
@@ -944,7 +1344,11 @@
                         '#4CAF50',
                         '#FF5252',
                         '#9C27B0',
-                        '#00BCD4'
+                        '#00BCD4',
+                        '#795548',
+                        '#607D8B',
+                        '#E91E63',
+                        '#3F51B5'
                     ]
                 }]
             };
@@ -976,25 +1380,59 @@
         // Export results
         async function exportResults(format) {
             try {
+                showLoading('Preparing Export', `Generating ${format.toUpperCase()} file...`);
+                
                 const response = await fetch(`/api/export/${format}`);
                 
-                if (format === 'csv') {
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `ai_costs_${new Date().toISOString().split('T')[0]}.csv`;
-                    a.click();
-                } else {
-                    const data = await response.json();
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `ai_costs_${new Date().toISOString().split('T')[0]}.json`;
-                    a.click();
+                if (!response.ok) {
+                    throw new Error('Export failed');
                 }
+                
+                let filename = '';
+                let blob;
+                
+                if (format === 'csv') {
+                    blob = await response.blob();
+                    filename = `ai_costs_detailed_${new Date().toISOString().split('T')[0]}.csv`;
+                } else if (format === 'json') {
+                    const data = await response.json();
+                    // Add metadata to export
+                    const exportData = {
+                        export_date: new Date().toISOString(),
+                        export_version: '1.0',
+                        period: selectedDates,
+                        summary: {
+                            total_cost: data.grand_total,
+                            daily_average: data.daily_average,
+                            projection_57_schools: data.projection_57_schools,
+                            total_resources: discoveryData ? discoveryData.reduce((sum, d) => sum + d.summary.total_ai_resources, 0) : 0
+                        },
+                        discoveries: discoveryData,
+                        cost_details: data
+                    };
+                    blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    filename = `ai_costs_full_report_${new Date().toISOString().split('T')[0]}.json`;
+                } else {
+                    // Excel export
+                    blob = await response.blob();
+                    filename = `ai_costs_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+                }
+                
+                // Download file
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                hideLoading();
+                showSuccess(`Export completed: ${filename}`);
+                
             } catch (error) {
+                hideLoading();
                 showError('Export failed: ' + error.message);
             }
         }
@@ -1023,19 +1461,206 @@
             currentStep = step;
         }
 
-        function showLoading(message) {
-            // Could implement a loading overlay
-            console.log('Loading:', message);
+        function showLoading(message, details = '', showProgress = false) {
+            const overlay = document.getElementById('loadingOverlay');
+            const textEl = document.getElementById('loadingText');
+            const detailsEl = document.getElementById('loadingDetails');
+            const progressBar = document.getElementById('progressBar');
+            
+            overlay.classList.remove('hidden');
+            textEl.textContent = message;
+            detailsEl.textContent = details;
+            
+            if (showProgress) {
+                progressBar.style.display = 'block';
+                updateProgress(0);
+            } else {
+                progressBar.style.display = 'none';
+            }
         }
 
         function hideLoading() {
-            // Hide loading overlay
-            console.log('Loading complete');
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.add('hidden');
+        }
+        
+        function updateProgress(percent) {
+            const fill = document.getElementById('progressBarFill');
+            fill.style.width = `${percent}%`;
+        }
+        
+        function updateLoadingDetails(details) {
+            const detailsEl = document.getElementById('loadingDetails');
+            detailsEl.textContent = details;
         }
 
         function showError(message) {
-            // Could implement a toast notification
-            alert('Error: ' + message);
+            hideLoading();
+            
+            // Create a nice error alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-error';
+            alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; max-width: 400px; z-index: 10000; animation: slideIn 0.3s ease;';
+            alertDiv.innerHTML = `
+                <strong>Error:</strong> ${message}
+                <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; font-size: 1.2rem; cursor: pointer;">&times;</button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentElement) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+        
+        function showSuccess(message) {
+            hideLoading();
+            
+            // Create a nice success alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success';
+            alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; max-width: 400px; z-index: 10000; animation: slideIn 0.3s ease;';
+            alertDiv.innerHTML = `
+                <strong>Success:</strong> ${message}
+                <button onclick="this.parentElement.remove()" style="float: right; background: none; border: none; font-size: 1.2rem; cursor: pointer;">&times;</button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (alertDiv.parentElement) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+        
+        // Generate detailed report
+        function generateDetailedReport() {
+            if (!costData || !discoveryData) {
+                showError('Please complete cost calculation first');
+                return;
+            }
+            
+            showLoading('Generating Detailed Report', 'Creating comprehensive AI cost analysis report...');
+            
+            // Create detailed report HTML
+            const reportWindow = window.open('', '_blank');
+            const reportHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>AI Cost Analysis Report - Success Academies</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+                        h1 { color: #005e9e; border-bottom: 3px solid #f7941e; padding-bottom: 10px; }
+                        h2 { color: #005e9e; margin-top: 30px; }
+                        .summary { background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                        .metric { display: inline-block; margin: 10px 20px 10px 0; }
+                        .metric-value { font-size: 24px; font-weight: bold; color: #005e9e; }
+                        .metric-label { font-size: 14px; color: #666; }
+                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+                        th { background: #005e9e; color: white; }
+                        tr:hover { background: #f5f5f5; }
+                        .project-section { margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+                        .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+                        @media print { body { margin: 20px; } }
+                    </style>
+                </head>
+                <body>
+                    <h1>AWS AI Cost Analysis Report</h1>
+                    <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                    <p><strong>Period:</strong> ${costData.period}</p>
+                    
+                    <div class="summary">
+                        <h2>Executive Summary</h2>
+                        <div class="metric">
+                            <div class="metric-value">$${costData.grand_total.toFixed(2)}</div>
+                            <div class="metric-label">Total AI Costs</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">$${costData.daily_average.toFixed(2)}</div>
+                            <div class="metric-label">Daily Average</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">$${costData.projection_57_schools.toFixed(2)}</div>
+                            <div class="metric-label">Projected (57 Schools)</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${discoveryData.reduce((sum, d) => sum + d.summary.total_ai_resources, 0)}</div>
+                            <div class="metric-label">Total AI Resources</div>
+                        </div>
+                    </div>
+                    
+                    <h2>Cost Breakdown by Service</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Cost</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${Object.entries(costData.costs_by_account.reduce((acc, account) => {
+                                Object.entries(account.services || {}).forEach(([service, cost]) => {
+                                    acc[service] = (acc[service] || 0) + cost;
+                                });
+                                return acc;
+                            }, {})).map(([service, cost]) => `
+                                <tr>
+                                    <td>${service.toUpperCase()}</td>
+                                    <td>$${cost.toFixed(2)}</td>
+                                    <td>${((cost / costData.grand_total) * 100).toFixed(1)}%</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    <h2>AI Projects Summary</h2>
+                    ${['Ask Eva', 'IEP Report', 'Resume Knockout', 'Resume Scoring', 'Financial Aid'].map(project => {
+                        const projectCost = costData.costs_by_account.reduce((sum, account) => 
+                            sum + (account.projects[project] || 0), 0);
+                        const resources = discoveryData.flatMap(d => 
+                            Object.values(d.services).flat()
+                        ).filter(r => r.project === project);
+                        
+                        if (projectCost > 0 || resources.length > 0) {
+                            return `
+                                <div class="project-section">
+                                    <h3>${project}</h3>
+                                    <p><strong>Monthly Cost:</strong> $${projectCost.toFixed(2)}</p>
+                                    <p><strong>Resources:</strong> ${resources.length}</p>
+                                    <p><strong>Services Used:</strong> ${[...new Set(resources.map(r => r.service || 'Various'))].join(', ')}</p>
+                                </div>
+                            `;
+                        }
+                        return '';
+                    }).join('')}
+                    
+                    <div class="footer">
+                        <p>This report was generated by the Success Academies AI Cost Calculator</p>
+                        <p>For questions or support, contact the IT department</p>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            reportWindow.document.write(reportHtml);
+            reportWindow.document.close();
+            
+            hideLoading();
+            showSuccess('Detailed report generated in new window');
+        }
+        
+        // Initialize date selector on step 3
+        function initializeDateSelector() {
+            // Set default to current month
+            setDatePreset('current');
         }
     </script>
 </body>

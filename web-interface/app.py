@@ -12,14 +12,23 @@ from datetime import datetime
 from decimal import Decimal
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from flask_cors import CORS
+from botocore.exceptions import ClientError
 import secrets
 
-# Add the SSO calculator to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'aws-ai-cost-calculator-sso'))
+# Add the parent directory to path for imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
 
-# Use simplified wrapper for web
+# Import from current directory first
 from sso_wrapper import WebSSOAuthenticator
-from ai_service_discovery import AIServiceDiscovery
+
+# Import from parent directory
+sys.path.insert(0, parent_dir)
+# Try to use enhanced discovery, fall back to original if not available
+try:
+    from enhanced_ai_discovery import EnhancedAIDiscovery as AIServiceDiscovery
+except ImportError:
+    from ai_service_discovery import AIServiceDiscovery
 from sso_cost_calculator import SSOCostCalculator
 
 # Configure logging
@@ -46,7 +55,13 @@ def convert_decimals(obj):
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
 app.json_encoder = DecimalEncoder
-CORS(app)
+# Enable CORS with credentials support
+CORS(app, resources={r"/api/*": {
+    "origins": ["http://localhost:5000", "http://127.0.0.1:5000", "http://10.0.0.64:5000"],
+    "methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["Content-Type"],
+    "supports_credentials": True
+}})
 
 # Store calculator instances in session
 calculators = {}
@@ -55,6 +70,35 @@ calculators = {}
 def index():
     """Serve the main web interface"""
     return render_template('index.html')
+
+@app.route('/api/test', methods=['GET'])
+def test_api():
+    """Test endpoint to verify API is working"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'API is working',
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/api/debug/aws', methods=['GET'])
+def debug_aws():
+    """Debug endpoint to check AWS configuration"""
+    try:
+        import boto3
+        # Try to get caller identity
+        sts = boto3.client('sts')
+        identity = sts.get_caller_identity()
+        return jsonify({
+            'status': 'ok',
+            'aws_configured': True,
+            'account': identity.get('Account', 'Unknown')
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'aws_configured': False,
+            'error': str(e)
+        })
 
 @app.route('/api/auth/status', methods=['GET'])
 def auth_status():
@@ -104,27 +148,60 @@ def configure_sso():
 def start_auth():
     """Start SSO authentication process"""
     session_id = session.get('session_id')
+    logger.info(f"Start auth called. Session ID from cookie: {session_id}")
+    logger.info(f"Available calculator sessions: {list(calculators.keys())}")
+    
     if not session_id or session_id not in calculators:
+        logger.error(f"Session not configured. Session ID: {session_id}, Available: {list(calculators.keys())}")
         return jsonify({'error': 'Session not configured'}), 400
     
     calc_data = calculators[session_id]
     authenticator = calc_data['authenticator']
     
     try:
+        logger.info(f"Starting authentication for session {session_id}")
+        
         # This will return the auth URL and device code
         auth_info = authenticator.authenticate()
         
         # Store auth info in session
         calc_data['auth_info'] = auth_info
         
+        logger.info(f"Authentication info received: {bool(auth_info)}")
+        
         return jsonify({
             'status': 'authentication_started',
-            'message': 'Authentication started. Check your browser.',
-            'auth_completed': True if auth_info else False
+            'message': 'Authentication started. Check your browser for the SSO login page.',
+            'auth_completed': True if auth_info else False,
+            'details': 'A browser window should open for AWS SSO login. Please complete the authentication there.'
         })
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        error_message = e.response['Error']['Message']
+        logger.error(f"AWS Client error during authentication: {error_code} - {error_message}")
+        
+        if error_code == 'InvalidRequestException':
+            return jsonify({
+                'error': 'Invalid SSO configuration. Please check your SSO URL and region.',
+                'details': error_message
+            }), 400
+        elif error_code == 'UnauthorizedException':
+            return jsonify({
+                'error': 'Authorization failed. Please check your AWS credentials.',
+                'details': error_message
+            }), 401
+        else:
+            return jsonify({
+                'error': f'AWS error: {error_code}',
+                'details': error_message
+            }), 500
     except Exception as e:
-        logger.error(f"Authentication error: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Authentication error: {type(e).__name__}: {str(e)}")
+        return jsonify({
+            'error': f'Authentication failed: {type(e).__name__}',
+            'details': str(e),
+            'hint': 'Check the server logs for more details'
+        }), 500
 
 @app.route('/api/accounts/list', methods=['GET'])
 def list_accounts():
@@ -159,6 +236,10 @@ def select_accounts():
     calc_data = calculators[session_id]
     calc_data['selected_accounts'] = selected_account_ids
     
+    logger.info(f"Account selection saved for session {session_id}:")
+    logger.info(f"  - Selected account IDs: {selected_account_ids}")
+    logger.info(f"  - Number of accounts selected: {len(selected_account_ids)}")
+    
     return jsonify({
         'status': 'accounts_selected',
         'selected_count': len(selected_account_ids)
@@ -175,22 +256,43 @@ def discover_resources():
     authenticator = calc_data['authenticator']
     discovery = calc_data['discovery']
     
-    # Get date parameters from request
+    # Get parameters from request
     data = request.json or {}
     start_date = data.get('start_date')
     end_date = data.get('end_date')
+    additional_services = data.get('additional_services', [])
+    account_filter = data.get('account_filter', 'all')
     
-    # Store dates in session
+    # Store dates and services in session
     calc_data['start_date'] = start_date
     calc_data['end_date'] = end_date
+    calc_data['additional_services'] = additional_services
+    calc_data['account_filter'] = account_filter
     
     try:
         # Get sessions for selected accounts
         all_accounts = authenticator.list_accounts(calc_data['auth_info']['access_token'])
-        selected_accounts = [acc for acc in all_accounts if acc['accountId'] in calc_data.get('selected_accounts', [])]
+        selected_account_ids = calc_data.get('selected_accounts', [])
+        
+        if not selected_account_ids:
+            return jsonify({'error': 'No accounts selected. Please select at least one account.'}), 400
+            
+        selected_accounts = [acc for acc in all_accounts if acc['accountId'] in selected_account_ids]
         
         if not selected_accounts:
-            selected_accounts = all_accounts  # Use all if none selected
+            return jsonify({'error': 'None of the selected accounts could be found.'}), 404
+            
+        logger.info(f"Processing {len(selected_accounts)} selected accounts out of {len(all_accounts)} total accounts")
+        logger.info(f"Selected accounts: {[acc.get('accountName', acc['accountId']) for acc in selected_accounts]}")
+        
+        # Apply account filter
+        if account_filter != 'all':
+            filtered_accounts = [
+                acc for acc in selected_accounts 
+                if account_filter.lower() in acc.get('accountName', '').lower()
+            ]
+            logger.info(f"After applying filter '{account_filter}': {len(filtered_accounts)} accounts remain")
+            selected_accounts = filtered_accounts
         
         discoveries = []
         for account in selected_accounts:
@@ -210,9 +312,23 @@ def discover_resources():
                     region_name='us-east-1'
                 )
                 
-                # Discover resources
+                # Discover resources with additional services
                 account_name = account.get('accountName', account['accountId'])
-                discovery_result = discovery.discover_all_services(boto_session, account_name)
+                logger.info(f"Discovering resources in account: {account_name} ({account['accountId']})")
+                
+                # Use enhanced discovery if available
+                if hasattr(discovery, 'discover_all_ai_resources'):
+                    discovery_result = discovery.discover_all_ai_resources(
+                        boto_session, 
+                        account_name,
+                        additional_services=additional_services
+                    )
+                else:
+                    discovery_result = discovery.discover_all_services(
+                        boto_session, 
+                        account_name,
+                        additional_services=additional_services
+                    )
                 discoveries.append(discovery_result)
         
         # Store discoveries
@@ -248,10 +364,17 @@ def calculate_costs():
     try:
         # Get sessions and calculate costs
         all_accounts = authenticator.list_accounts(calc_data['auth_info']['access_token'])
-        selected_accounts = [acc for acc in all_accounts if acc['accountId'] in calc_data.get('selected_accounts', [])]
+        selected_account_ids = calc_data.get('selected_accounts', [])
+        
+        if not selected_account_ids:
+            return jsonify({'error': 'No accounts selected. Please run discovery first.'}), 400
+            
+        selected_accounts = [acc for acc in all_accounts if acc['accountId'] in selected_account_ids]
         
         if not selected_accounts:
-            selected_accounts = all_accounts
+            return jsonify({'error': 'None of the selected accounts could be found.'}), 404
+            
+        logger.info(f"Calculating costs for {len(selected_accounts)} selected accounts")
         
         all_costs = []
         for account, discovery in zip(selected_accounts, calc_data.get('discoveries', [])):
@@ -271,10 +394,12 @@ def calculate_costs():
                     region_name='us-east-1'
                 )
                 
-                # Calculate costs
+                # Calculate costs with additional services
                 account_name = account.get('accountName', account['accountId'])
+                logger.info(f"Calculating costs for account: {account_name} ({account['accountId']})")
                 costs = calculator.calculate_costs_for_resources(
-                    boto_session, account_name, discovery, start_date, end_date
+                    boto_session, account_name, discovery, start_date, end_date,
+                    additional_services=calc_data.get('additional_services', [])
                 )
                 all_costs.append(costs)
         
@@ -351,4 +476,4 @@ def export_results(format):
         return jsonify({'error': 'Invalid format'}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)

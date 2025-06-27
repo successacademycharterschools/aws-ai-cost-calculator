@@ -30,7 +30,8 @@ class SSOCostCalculator:
         self.discovered_resources = []
         
     def calculate_costs_for_resources(self, session: boto3.Session, account_name: str, 
-                                    discovered: Dict, start_date: str = None, end_date: str = None) -> Dict:
+                                    discovered: Dict, start_date: str = None, end_date: str = None,
+                                    additional_services: List[str] = None) -> Dict:
         """Calculate costs for discovered AI resources"""
         ce_client = session.client('ce', region_name='us-east-1')
         
@@ -124,6 +125,30 @@ class SSOCostCalculator:
                 costs['services']['kendra'] = kendra_cost
                 costs['total'] += kendra_cost
             progress.update(task, completed=True)
+            
+            # Additional services costs (SNS, EventBridge, etc.)
+            if additional_services:
+                for service in additional_services:
+                    service_name_map = {
+                        'sns': 'Amazon Simple Notification Service',
+                        'events': 'Amazon EventBridge',
+                        'sqs': 'Amazon Simple Queue Service',
+                        'cloudwatch': 'AmazonCloudWatch',
+                        'ecr': 'Amazon EC2 Container Registry (ECR)',
+                        'ecs': 'Amazon Elastic Container Service',
+                        'states': 'AWS Step Functions',
+                        'glue': 'AWS Glue'
+                    }
+                    
+                    if service in service_name_map:
+                        task = progress.add_task(f"[cyan]Calculating {service.upper()} costs for {account_name}...", total=None)
+                        service_cost = self._calculate_service_costs(
+                            ce_client, service_name_map[service], start_date, ce_end_date, account_id
+                        )
+                        if service_cost > 0:
+                            costs['services'][service] = service_cost
+                            costs['total'] += service_cost
+                        progress.update(task, completed=True)
         
         # Calculate project-level costs
         self._calculate_project_costs(costs, discovered)

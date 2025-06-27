@@ -16,22 +16,26 @@ console = Console()
 
 class AIServiceDiscovery:
     def __init__(self):
-        # AI service patterns
+        # AI service patterns - Updated to catch specific resources
         self.ai_patterns = {
             'lambda': [
                 r'.*-ai-.*',
                 r'.*ask-eva.*',
-                r'.*iep-report.*',
+                r'.*iep.*',
+                r'.*iepreport.*',
                 r'.*resume-.*',
                 r'.*knockout.*',
                 r'.*scoring.*',
                 r'.*financial-aid.*',
-                r'sa-ai-.*'
+                r'sa-ai-.*',
+                r'.*querykb.*',
+                r'.*iep_performance.*'
             ],
             's3': [
                 r'sa-ai-.*',
                 r'.*-ai-.*',
                 r'.*-modeltraining.*',
+                r'.*modeltraining.*',
                 r'.*ask-eva.*',
                 r'.*resume-.*',
                 r'.*iep.*'
@@ -40,7 +44,16 @@ class AIServiceDiscovery:
                 r'.*_ai_.*',
                 r'.*-ai-.*',
                 r'.*conversation.*',
-                r'.*chat.*'
+                r'.*chat.*',
+                r'sa_ai_.*'  # Added to catch sa_ai_ask_eva_conversation_history
+            ],
+            'bedrock': [
+                r'.*eva.*',
+                r'.*-ai-.*',
+                r'.*quick-start.*',
+                r'askk-eva.*',  # To catch typo in knowledge base name
+                r'.*knowledge.*base.*',
+                r'.*agent.*'
             ],
             'tags': {
                 'Project': ['AskEva', 'IEPReport', 'ResumeKnockout', 'ResumeScoring', 'FinancialAid'],
@@ -62,7 +75,7 @@ class AIServiceDiscovery:
             'financial-aid': 'Financial Aid'
         }
     
-    def discover_all_services(self, session: boto3.Session, account_name: str) -> Dict:
+    def discover_all_services(self, session: boto3.Session, account_name: str, additional_services: List[str] = None) -> Dict:
         """Discover all AI-related services in an account"""
         discoveries = {
             'account': account_name,
@@ -124,6 +137,27 @@ class AIServiceDiscovery:
                 discoveries['summary']['total_ai_resources'] += len(api_resources)
                 discoveries['summary']['services_found'].add('apigateway')
             progress.update(task, completed=True)
+            
+            # Additional Services (SNS, EventBridge, etc.)
+            if additional_services:
+                for service in additional_services:
+                    if service == 'sns':
+                        task = progress.add_task(f"[cyan]Scanning SNS topics in {account_name}...", total=None)
+                        sns_resources = self.discover_sns_topics(session)
+                        if sns_resources:
+                            discoveries['services']['sns'] = sns_resources
+                            discoveries['summary']['total_ai_resources'] += len(sns_resources)
+                            discoveries['summary']['services_found'].add('sns')
+                        progress.update(task, completed=True)
+                    
+                    elif service == 'events':
+                        task = progress.add_task(f"[cyan]Scanning EventBridge rules in {account_name}...", total=None)
+                        eventbridge_resources = self.discover_eventbridge_rules(session)
+                        if eventbridge_resources:
+                            discoveries['services']['eventbridge'] = eventbridge_resources
+                            discoveries['summary']['total_ai_resources'] += len(eventbridge_resources)
+                            discoveries['summary']['services_found'].add('eventbridge')
+                        progress.update(task, completed=True)
         
         # Convert set to list for JSON serialization
         discoveries['summary']['services_found'] = list(discoveries['summary']['services_found'])
@@ -358,6 +392,87 @@ class AIServiceDiscovery:
             console.print(f"[yellow]Warning: Could not list API Gateway resources: {e}[/yellow]")
         
         return ai_apis
+    
+    def discover_sns_topics(self, session: boto3.Session) -> List[Dict]:
+        """Discover AI-related SNS topics"""
+        sns_client = session.client('sns')
+        ai_topics = []
+        
+        try:
+            paginator = sns_client.get_paginator('list_topics')
+            
+            for page in paginator.paginate():
+                for topic in page.get('Topics', []):
+                    topic_arn = topic['TopicArn']
+                    # Extract topic name from ARN
+                    topic_name = topic_arn.split(':')[-1]
+                    
+                    if self._matches_patterns(topic_name, self.ai_patterns['lambda']):  # Use same patterns
+                        # Get topic attributes and tags
+                        tags = {}
+                        try:
+                            tag_response = sns_client.list_tags_for_resource(ResourceArn=topic_arn)
+                            tags = {tag['Key']: tag['Value'] for tag in tag_response.get('Tags', [])}
+                        except:
+                            pass
+                        
+                        ai_topics.append({
+                            'name': topic_name,
+                            'arn': topic_arn,
+                            'project': self._identify_project(topic_name, tags),
+                            'tags': tags
+                        })
+        
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not list SNS topics: {e}[/yellow]")
+        
+        return ai_topics
+    
+    def discover_eventbridge_rules(self, session: boto3.Session) -> List[Dict]:
+        """Discover AI-related EventBridge rules"""
+        events_client = session.client('events')
+        ai_rules = []
+        
+        try:
+            # List all event buses
+            buses = ['default']  # Start with default bus
+            try:
+                bus_response = events_client.list_event_buses()
+                buses.extend([bus['Name'] for bus in bus_response.get('EventBuses', []) if bus['Name'] != 'default'])
+            except:
+                pass
+            
+            for bus_name in buses:
+                try:
+                    paginator = events_client.get_paginator('list_rules')
+                    for page in paginator.paginate(EventBusName=bus_name):
+                        for rule in page.get('Rules', []):
+                            rule_name = rule['Name']
+                            
+                            if self._matches_patterns(rule_name, self.ai_patterns['lambda']):
+                                # Get rule details and tags
+                                tags = {}
+                                try:
+                                    tag_response = events_client.list_tags_for_resource(ResourceArn=rule['Arn'])
+                                    tags = {tag['Key']: tag['Value'] for tag in tag_response.get('Tags', [])}
+                                except:
+                                    pass
+                                
+                                ai_rules.append({
+                                    'name': rule_name,
+                                    'arn': rule['Arn'],
+                                    'bus': bus_name,
+                                    'state': rule.get('State', 'Unknown'),
+                                    'project': self._identify_project(rule_name, tags),
+                                    'tags': tags
+                                })
+                except:
+                    pass
+        
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not list EventBridge rules: {e}[/yellow]")
+        
+        return ai_rules
     
     def print_discovery_summary(self, discoveries: List[Dict]):
         """Print a summary of discovered resources"""
