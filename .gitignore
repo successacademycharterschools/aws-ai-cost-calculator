@@ -74,3 +74,24 @@ wheels/
 # Credentials (NEVER commit these)
 *credentials*
 *secret*
+
+# User-specific files
+.aws-cost-config.json
+ai_cost_report_*.json
+venv/
+__pycache__/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Output files from cost calculations
+cost_export_*.json
+*_costs.json
+total_costs_*.json
+ai_costs_summary_*.csv
+ai_resources_*.json
