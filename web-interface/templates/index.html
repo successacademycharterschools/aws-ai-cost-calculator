@@ -14,7 +14,11 @@
             --sa-gray-light: #f5f5f5;
             --sa-gray-medium: #e0e0e0;
             --sa-gray-dark: #666666;
+            --sa-green: #4caf50;
+            --sa-red: #f44336;
+            --sa-purple: #9c27b0;
             --shadow: 0 2px 8px rgba(0,0,0,0.1);
+            --shadow-lg: 0 4px 20px rgba(0,0,0,0.15);
         }
 
         * {
@@ -465,6 +469,48 @@
             justify-content: flex-end;
             margin-top: 2rem;
         }
+        
+        /* AI Service Selection */
+        #serviceSelection h4 {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .btn-secondary {
+            background-color: var(--sa-gray-medium);
+            color: var(--sa-black);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--sa-gray-dark);
+            color: var(--sa-white);
+        }
+        
+        /* Stat Cards */
+        .stat-card {
+            background: var(--sa-gray-light);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--sa-gray-medium);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--sa-blue);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--sa-gray-dark);
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -602,45 +648,145 @@
                 </div>
             </div>
             
-            <!-- Manual Service Selection -->
+            <!-- AI Service Selection -->
             <div id="serviceSelection" style="margin-bottom: 2rem;">
                 <div class="form-group">
-                    <label class="form-label">Additional AWS Services to Include</label>
+                    <label class="form-label">AWS AI/ML Services to Track</label>
                     <div class="alert alert-info">
-                        Select additional services that might contain AI-related costs. The system will automatically discover Lambda, S3, DynamoDB, Bedrock, and API Gateway resources.
+                        The system automatically discovers and tracks costs for all enabled AI services. Select additional services to include.
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+                    
+                    <!-- Select All / Clear All buttons -->
+                    <div style="margin-bottom: 1rem;">
+                        <button type="button" class="btn btn-small" onclick="selectAllAIServices()">Select All AI Services</button>
+                        <button type="button" class="btn btn-small btn-secondary" onclick="clearAllAIServices()">Clear All</button>
+                    </div>
+                    
+                    <!-- Foundation Models & Generative AI -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Foundation Models & Generative AI</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-sns" value="sns">
-                            <span>SNS (Simple Notification Service)</span>
+                            <input type="checkbox" id="service-bedrock" value="bedrock" checked>
+                            <span>Amazon Bedrock</span>
                         </label>
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-eventbridge" value="events">
-                            <span>EventBridge</span>
+                            <input type="checkbox" id="service-sagemaker" value="sagemaker" checked>
+                            <span>Amazon SageMaker</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Natural Language Processing -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Natural Language Processing</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-comprehend" value="comprehend" checked>
+                            <span>Amazon Comprehend</span>
                         </label>
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-sqs" value="sqs">
-                            <span>SQS (Simple Queue Service)</span>
+                            <input type="checkbox" id="service-translate" value="translate" checked>
+                            <span>Amazon Translate</span>
                         </label>
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-cloudwatch" value="cloudwatch">
-                            <span>CloudWatch Logs</span>
+                            <input type="checkbox" id="service-textract" value="textract" checked>
+                            <span>Amazon Textract</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Computer Vision -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Computer Vision</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-rekognition" value="rekognition" checked>
+                            <span>Amazon Rekognition</span>
                         </label>
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-ecr" value="ecr">
-                            <span>ECR (Container Registry)</span>
+                            <input type="checkbox" id="service-lookoutvision" value="lookoutvision">
+                            <span>Amazon Lookout for Vision</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Speech Services -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Speech Services</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-polly" value="polly" checked>
+                            <span>Amazon Polly</span>
                         </label>
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-ecs" value="ecs">
-                            <span>ECS/Fargate</span>
+                            <input type="checkbox" id="service-transcribe" value="transcribe" checked>
+                            <span>Amazon Transcribe</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Conversational AI & Search -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Conversational AI & Search</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-lex" value="lex" checked>
+                            <span>Amazon Lex</span>
                         </label>
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-stepfunctions" value="states">
-                            <span>Step Functions</span>
+                            <input type="checkbox" id="service-kendra" value="kendra" checked>
+                            <span>Amazon Kendra</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Forecasting & Personalization -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Forecasting & Personalization</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-forecast" value="forecast" checked>
+                            <span>Amazon Forecast</span>
                         </label>
                         <label class="account-item" style="margin: 0;">
-                            <input type="checkbox" id="service-glue" value="glue">
-                            <span>Glue</span>
+                            <input type="checkbox" id="service-personalize" value="personalize" checked>
+                            <span>Amazon Personalize</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Developer & Operations Tools -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Developer & Operations Tools</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-codeguru" value="codeguru">
+                            <span>Amazon CodeGuru</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-devopsguru" value="devopsguru">
+                            <span>Amazon DevOps Guru</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-frauddetector" value="frauddetector">
+                            <span>Amazon Fraud Detector</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Specialized AI Services -->
+                    <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--sa-blue);">Specialized AI Services</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-lookoutmetrics" value="lookoutmetrics">
+                            <span>Lookout for Metrics</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-lookoutequipment" value="lookoutequipment">
+                            <span>Lookout for Equipment</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-monitron" value="monitron">
+                            <span>Amazon Monitron</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-healthlake" value="healthlake">
+                            <span>AWS HealthLake</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-panorama" value="panorama">
+                            <span>AWS Panorama</span>
+                        </label>
+                        <label class="account-item" style="margin: 0;">
+                            <input type="checkbox" id="service-augmentedai" value="augmentedai">
+                            <span>Amazon Augmented AI</span>
                         </label>
                     </div>
                 </div>
@@ -730,6 +876,81 @@
                 </tbody>
             </table>
 
+            <!-- Project Breakdown -->
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--sa-blue);">Cost Breakdown by Project</h3>
+            <div id="projectBreakdown" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <!-- Project cards will be populated here -->
+            </div>
+
+            <!-- AI-Powered Budget Analysis -->
+            <div id="aiAnalysisSection" style="display: none;">
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--sa-blue);">
+                    <span style="display: inline-flex; align-items: center;">
+                        🤖 AI-Powered Budget Analysis
+                        <button class="btn btn-primary btn-small" style="margin-left: 1rem;" onclick="runAIAnalysis()">
+                            Refresh Analysis
+                        </button>
+                    </span>
+                </h3>
+                
+                <!-- Executive Summary -->
+                <div class="card" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); margin-bottom: 2rem;">
+                    <h4 style="color: var(--sa-blue); margin-bottom: 1rem;">Executive Summary</h4>
+                    <div id="executiveSummary" style="white-space: pre-wrap; line-height: 1.8;">
+                        Loading AI insights...
+                    </div>
+                </div>
+                
+                <!-- Optimization Score -->
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="display: inline-block; position: relative;">
+                        <svg width="200" height="200" viewBox="0 0 200 200">
+                            <circle cx="100" cy="100" r="90" fill="none" stroke="#e0e0e0" stroke-width="20"/>
+                            <circle id="scoreCircle" cx="100" cy="100" r="90" fill="none" stroke="var(--sa-green)" 
+                                    stroke-width="20" stroke-linecap="round" transform="rotate(-90 100 100)"
+                                    stroke-dasharray="565.48" stroke-dashoffset="565.48"/>
+                            <text x="100" y="100" text-anchor="middle" dominant-baseline="middle">
+                                <tspan id="scoreValue" style="font-size: 48px; font-weight: bold; fill: var(--sa-blue);">0</tspan>
+                                <tspan x="100" y="130" style="font-size: 16px; fill: var(--sa-gray-dark);">Optimization Score</tspan>
+                            </text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- Key Insights -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div id="keyInsights">
+                        <!-- Insights will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Recommendations Grid -->
+                <h4 style="color: var(--sa-blue); margin: 2rem 0 1rem 0;">💡 Optimization Recommendations</h4>
+                <div id="recommendationsGrid" style="display: grid; gap: 1rem; margin-bottom: 2rem;">
+                    <!-- Recommendations will be populated here -->
+                </div>
+                
+                <!-- Savings Opportunities -->
+                <h4 style="color: var(--sa-blue); margin: 2rem 0 1rem 0;">💰 Potential Savings</h4>
+                <div id="savingsOpportunities" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                    <!-- Savings cards will be populated here -->
+                </div>
+                
+                <!-- Implementation Roadmap -->
+                <h4 style="color: var(--sa-blue); margin: 2rem 0 1rem 0;">🗺️ Implementation Roadmap</h4>
+                <div id="implementationRoadmap" style="margin-bottom: 2rem;">
+                    <!-- Roadmap will be populated here -->
+                </div>
+                
+                <!-- ROI Analysis -->
+                <div class="card" style="background: #f0f9ff; border: 2px solid var(--sa-blue);">
+                    <h4 style="color: var(--sa-blue); margin-bottom: 1rem;">📊 Return on Investment Analysis</h4>
+                    <div id="roiAnalysis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <!-- ROI metrics will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
             <!-- Chart Container -->
             <div class="chart-container">
                 <canvas id="costChart"></canvas>
@@ -739,6 +960,7 @@
 
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='accuracy_checker.js') }}"></script>
     <script>
         // Global state
         let currentStep = 1;
@@ -872,7 +1094,7 @@
                 
                 // Provide more helpful error messages
                 if (error.message.includes('Failed to fetch')) {
-                    showError('Network error: Unable to connect to the server. Please check if the server is running on http://localhost:5000');
+                    showError('Network error: Unable to connect to the server. Please check if the server is running on http://localhost:5001');
                 } else if (error.message.includes('NetworkError')) {
                     showError('Network error: Please check your internet connection and try again.');
                 } else {
@@ -931,6 +1153,22 @@
             });
             
             document.getElementById('selectAllBtn').textContent = allChecked ? 'Select All' : 'Deselect All';
+        }
+        
+        // Select all AI services
+        function selectAllAIServices() {
+            const checkboxes = document.querySelectorAll('#serviceSelection input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+            });
+        }
+        
+        // Clear all AI services
+        function clearAllAIServices() {
+            const checkboxes = document.querySelectorAll('#serviceSelection input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
         }
 
         // Set date preset values
@@ -1134,6 +1372,8 @@
                 if (!response.ok) throw new Error(data.error);
                 
                 discoveryData = data.discoveries;
+                // Make discovery data globally accessible
+                window.discoveryData = discoveryData;
                 hideLoading();
                 
                 displayDiscoveryResults(data.discoveries);
@@ -1162,16 +1402,78 @@
             resultsDiv.classList.remove('hidden');
             
             let totalResources = 0;
-            let html = '<h3>AI Resources Discovered:</h3><ul>';
+            let totalServices = new Set();
+            let totalProjects = new Set();
+            let serviceBreakdown = {};
+            let projectBreakdown = {};
             
+            // Aggregate data from all accounts
             discoveries.forEach(discovery => {
-                const count = discovery.summary.total_ai_resources;
-                totalResources += count;
-                html += `<li><strong>${discovery.account}:</strong> ${count} resources found</li>`;
+                totalResources += discovery.summary.total_ai_resources;
+                
+                // Aggregate services
+                Object.keys(discovery.services || {}).forEach(service => {
+                    totalServices.add(service);
+                    if (!serviceBreakdown[service]) {
+                        serviceBreakdown[service] = 0;
+                    }
+                    serviceBreakdown[service] += discovery.services[service].count || 0;
+                });
+                
+                // Aggregate projects
+                Object.keys(discovery.projects || {}).forEach(project => {
+                    if (project !== 'Unknown') {
+                        totalProjects.add(project);
+                        if (!projectBreakdown[project]) {
+                            projectBreakdown[project] = 0;
+                        }
+                        projectBreakdown[project] += discovery.projects[project].total_resources || 0;
+                    }
+                });
             });
             
-            html += '</ul>';
-            html += `<p style="margin-top: 1rem;"><strong>Total:</strong> ${totalResources} AI resources</p>`;
+            // Build HTML
+            let html = '<h3>AI Resources Discovery Summary</h3>';
+            
+            // Overall stats
+            html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0;">';
+            html += `<div class="stat-card">
+                        <div class="stat-value">${totalResources}</div>
+                        <div class="stat-label">Total AI Resources</div>
+                     </div>`;
+            html += `<div class="stat-card">
+                        <div class="stat-value">${totalServices.size}</div>
+                        <div class="stat-label">AI Services Found</div>
+                     </div>`;
+            html += `<div class="stat-card">
+                        <div class="stat-value">${totalProjects.size}</div>
+                        <div class="stat-label">Projects Identified</div>
+                     </div>`;
+            html += '</div>';
+            
+            // Service breakdown
+            if (Object.keys(serviceBreakdown).length > 0) {
+                html += '<h4 style="margin-top: 2rem;">Resources by Service:</h4>';
+                html += '<ul>';
+                Object.entries(serviceBreakdown)
+                    .sort((a, b) => b[1] - a[1])
+                    .forEach(([service, count]) => {
+                        html += `<li><strong>${service}:</strong> ${count} resources</li>`;
+                    });
+                html += '</ul>';
+            }
+            
+            // Project breakdown
+            if (Object.keys(projectBreakdown).length > 0) {
+                html += '<h4 style="margin-top: 2rem;">Resources by Project:</h4>';
+                html += '<ul>';
+                Object.entries(projectBreakdown)
+                    .sort((a, b) => b[1] - a[1])
+                    .forEach(([project, count]) => {
+                        html += `<li><strong>${project}:</strong> ${count} resources</li>`;
+                    });
+                html += '</ul>';
+            }
             
             resultsDiv.innerHTML = html;
         }
@@ -1219,6 +1521,11 @@
                 // Show summary
                 showSuccess(`Total AI costs: $${data.grand_total.toFixed(2)} for ${data.period}`);
                 
+                // Automatically run AI analysis
+                setTimeout(() => {
+                    runAIAnalysis();
+                }, 1000);
+                
             } catch (error) {
                 hideLoading();
                 showError('Cost calculation failed: ' + error.message);
@@ -1241,8 +1548,65 @@
             }
             document.getElementById('resourceCount').textContent = totalResources;
             
+            // Ensure global discoveryData is available
+            if (!window.discoveryData) {
+                window.discoveryData = discoveryData || [];
+            }
+            
+            // Add resource count to data for accuracy checker
+            const enhancedData = {
+                ...data,
+                total_resources: totalResources,
+                discovery_count: window.discoveryData.length,
+                has_discovery_data: window.discoveryData.length > 0
+            };
+            
+            // Log for debugging
+            console.log('Cost data:', {
+                grand_total: data.grand_total,
+                total_resources: totalResources,
+                discovery_data: window.discoveryData.length,
+                costs_by_account: data.costs_by_account ? data.costs_by_account.length : 0
+            });
+            
+            // Trigger accuracy checker if available
+            if (window.accuracyChecker && window.accuracyChecker.checkAccuracy) {
+                console.log('Running accuracy check on results...');
+                window.accuracyChecker.checkAccuracy(enhancedData);
+            }
+            
+            // Service name mapping for display
+            const serviceDisplayNames = {
+                'bedrock': 'Amazon Bedrock',
+                'sagemaker': 'Amazon SageMaker',
+                'comprehend': 'Amazon Comprehend',
+                'textract': 'Amazon Textract',
+                'rekognition': 'Amazon Rekognition',
+                'polly': 'Amazon Polly',
+                'transcribe': 'Amazon Transcribe',
+                'translate': 'Amazon Translate',
+                'forecast': 'Amazon Forecast',
+                'personalize': 'Amazon Personalize',
+                'lex': 'Amazon Lex',
+                'kendra': 'Amazon Kendra',
+                'lambda': 'AWS Lambda (AI)',
+                's3': 'Amazon S3 (AI)',
+                'dynamodb': 'Amazon DynamoDB (AI)'
+            };
+            
             // Known AI projects
-            const knownAIProjects = ['Ask Eva', 'IEP Report', 'Resume Knockout', 'Resume Scoring', 'Financial Aid', 'Unknown'];
+            const knownAIProjects = [
+                'Ask Eva', 
+                'IEP Report', 
+                'Resume Knockout', 
+                'Resume Scoring', 
+                'Financial Aid',
+                'Parent App',
+                'Sales Force',
+                'Professional Development',
+                'Unknown',
+                'unattributed'
+            ];
             
             // Populate cost table
             const tableBody = document.getElementById('costTableBody');
@@ -1265,10 +1629,11 @@
                 // Add service costs
                 Object.entries(accountCosts.services || {}).forEach(([service, cost]) => {
                     if (cost > 0) {
+                        const displayName = serviceDisplayNames[service] || service.toUpperCase();
                         const row = tableBody.insertRow();
                         row.innerHTML = `
                             <td>${accountName}</td>
-                            <td>${service.toUpperCase()}</td>
+                            <td>${displayName}</td>
                             <td>$${cost.toFixed(2)}</td>
                             <td>AI Services</td>
                         `;
@@ -1299,8 +1664,106 @@
                 `;
             }
             
+            // Create project breakdown
+            createProjectBreakdown(data);
+            
             // Create chart
             createCostChart(data);
+        }
+        
+        // Create project breakdown cards
+        function createProjectBreakdown(data) {
+            const projectBreakdown = document.getElementById('projectBreakdown');
+            projectBreakdown.innerHTML = '';
+            
+            // Use new project_breakdown structure from backend
+            const projectCosts = {};
+            const projectResources = {};
+            
+            // Check if we have the new project_breakdown structure
+            if (data.project_breakdown) {
+                Object.entries(data.project_breakdown).forEach(([projectName, projectData]) => {
+                    projectCosts[projectName] = projectData.total_cost || 0;
+                    projectResources[projectName] = projectData.resource_count || 0;
+                });
+            } else {
+                // Fallback to old structure
+                data.costs_by_account.forEach(accountCosts => {
+                    // Process project costs
+                    Object.entries(accountCosts.projects || {}).forEach(([project, cost]) => {
+                        if (!projectCosts[project]) {
+                            projectCosts[project] = 0;
+                            projectResources[project] = 0;
+                        }
+                        projectCosts[project] += cost;
+                    });
+                });
+                
+                // Count resources by project from discovery data
+                if (window.discoveryData && window.discoveryData[0]?.projects) {
+                    Object.entries(window.discoveryData[0].projects).forEach(([projectKey, projectData]) => {
+                        const projectName = projectData.name || projectKey;
+                        if (!projectResources[projectName]) {
+                            projectResources[projectName] = 0;
+                        }
+                        projectResources[projectName] = projectData.total_resources || 0;
+                    });
+                }
+            }
+            
+            // Create cards for each project
+            const projectOrder = [
+                'Ask Eva',
+                'IEP Report',
+                'Financial Aid',
+                'Resume Knockout',
+                'Resume Scoring',
+                'Parent App',
+                'Sales Force Integration',
+                'Professional Development',
+                'AI Infrastructure',
+                'Unattributed'
+            ];
+            
+            projectOrder.forEach(projectName => {
+                const cost = projectCosts[projectName] || 0;
+                const resources = projectResources[projectName] || 0;
+                
+                // Only show projects with costs or resources
+                if (cost > 0 || resources > 0) {
+                    const card = document.createElement('div');
+                    card.style.cssText = `
+                        background: var(--sa-gray-light);
+                        padding: 1.5rem;
+                        border-radius: 8px;
+                        border: 1px solid var(--sa-gray-medium);
+                    `;
+                    
+                    const bgColor = projectName === 'unattributed' || projectName === 'Unknown' 
+                        ? '#fee2e2' : '#e0f2fe';
+                    
+                    card.innerHTML = `
+                        <h4 style="margin: 0 0 0.5rem 0; color: var(--sa-blue);">${projectName}</h4>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--sa-green);">
+                            $${(typeof cost === 'number' ? cost : 0).toFixed(2)}
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--sa-gray-dark); margin-top: 0.5rem;">
+                            ${resources} resources
+                        </div>
+                    `;
+                    
+                    projectBreakdown.appendChild(card);
+                }
+            });
+            
+            // If no projects found
+            if (projectBreakdown.children.length === 0) {
+                projectBreakdown.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; color: var(--sa-gray-dark);">
+                        No project cost data available
+                    </div>
+                `;
+            }
         }
 
         // Create cost chart
@@ -1333,8 +1796,27 @@
                 return;
             }
             
+            // Get service display names
+            const serviceDisplayNames = {
+                'bedrock': 'Amazon Bedrock',
+                'sagemaker': 'Amazon SageMaker',
+                'comprehend': 'Amazon Comprehend',
+                'textract': 'Amazon Textract',
+                'rekognition': 'Amazon Rekognition',
+                'polly': 'Amazon Polly',
+                'transcribe': 'Amazon Transcribe',
+                'translate': 'Amazon Translate',
+                'forecast': 'Amazon Forecast',
+                'personalize': 'Amazon Personalize',
+                'lex': 'Amazon Lex',
+                'kendra': 'Amazon Kendra',
+                'lambda': 'AWS Lambda (AI)',
+                's3': 'Amazon S3 (AI)',
+                'dynamodb': 'Amazon DynamoDB (AI)'
+            };
+            
             const chartData = {
-                labels: Object.keys(serviceCosts).map(s => s.toUpperCase()),
+                labels: Object.keys(serviceCosts).map(s => serviceDisplayNames[s] || s.toUpperCase()),
                 datasets: [{
                     label: 'Cost by Service',
                     data: Object.values(serviceCosts),
@@ -1661,6 +2143,347 @@
         function initializeDateSelector() {
             // Set default to current month
             setDatePreset('current');
+        }
+        
+        // AI Analysis Functions
+        async function runAIAnalysis() {
+            if (!costData) {
+                showError('Please calculate costs first before running AI analysis');
+                return;
+            }
+            
+            // Always show the AI analysis section
+            document.getElementById('aiAnalysisSection').style.display = 'block';
+            
+            showLoading('Generating AI-powered insights...', 'Analyzing your AWS costs with advanced AI');
+            
+            try {
+                const response = await fetch('/api/ai-analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to generate AI analysis');
+                }
+                
+                const analysisData = await response.json();
+                displayAIAnalysis(analysisData);
+                
+                hideLoading();
+                showSuccess('AI analysis completed successfully!');
+                
+                // Scroll to AI section
+                document.getElementById('aiAnalysisSection').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                hideLoading();
+                showError('AI analysis error: ' + error.message);
+                console.error('AI analysis error:', error);
+            }
+        }
+        
+        function displayAIAnalysis(data) {
+            console.log('AI Analysis Data received:', data);
+            
+            const aiAnalysis = data.ai_analysis || {};
+            const optimizationPlan = data.optimization_plan || {};
+            
+            console.log('Savings opportunities:', aiAnalysis.savings_opportunities);
+            console.log('Implementation roadmap:', optimizationPlan.implementation_roadmap);
+            
+            // Display Executive Summary
+            document.getElementById('executiveSummary').textContent = 
+                aiAnalysis.executive_summary || 'No executive summary available';
+            
+            // Display Optimization Score
+            const score = aiAnalysis.optimization_score || 0;
+            animateScore(score);
+            
+            // Display Key Insights
+            displayKeyInsights(aiAnalysis.insights || []);
+            
+            // Display Recommendations
+            displayRecommendations(aiAnalysis.recommendations || []);
+            
+            // Display Savings Opportunities
+            displaySavingsOpportunities(aiAnalysis.savings_opportunities || {});
+            
+            // Display Implementation Roadmap
+            displayImplementationRoadmap(optimizationPlan.implementation_roadmap || []);
+            
+            // Display ROI Analysis
+            displayROIAnalysis(optimizationPlan.roi_analysis || {});
+        }
+        
+        function animateScore(targetScore) {
+            const scoreCircle = document.getElementById('scoreCircle');
+            const scoreValue = document.getElementById('scoreValue');
+            const circumference = 2 * Math.PI * 90;
+            const offset = circumference - (targetScore / 100) * circumference;
+            
+            let currentScore = 0;
+            const duration = 2000; // 2 seconds
+            const increment = targetScore / (duration / 16); // 60fps
+            
+            const animate = () => {
+                currentScore = Math.min(currentScore + increment, targetScore);
+                scoreValue.textContent = Math.round(currentScore);
+                
+                const currentOffset = circumference - (currentScore / 100) * circumference;
+                scoreCircle.style.strokeDashoffset = currentOffset;
+                
+                // Change color based on score
+                if (currentScore < 40) {
+                    scoreCircle.style.stroke = 'var(--sa-red)';
+                } else if (currentScore < 70) {
+                    scoreCircle.style.stroke = 'var(--sa-orange)';
+                } else {
+                    scoreCircle.style.stroke = 'var(--sa-green)';
+                }
+                
+                if (currentScore < targetScore) {
+                    requestAnimationFrame(animate);
+                }
+            };
+            
+            animate();
+        }
+        
+        function displayKeyInsights(insights) {
+            const container = document.getElementById('keyInsights');
+            container.innerHTML = '';
+            
+            insights.forEach(insight => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.cssText = `
+                    background: ${getInsightColor(insight.impact)};
+                    border-left: 4px solid ${getInsightBorderColor(insight.impact)};
+                `;
+                
+                card.innerHTML = `
+                    <h5 style="color: var(--sa-blue); margin-bottom: 0.5rem;">
+                        ${getInsightIcon(insight.category)} ${insight.title}
+                    </h5>
+                    <p style="color: var(--sa-gray-dark); margin: 0;">
+                        ${insight.description}
+                    </p>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        function displayRecommendations(recommendations) {
+            const container = document.getElementById('recommendationsGrid');
+            container.innerHTML = '';
+            
+            recommendations.forEach(rec => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.cssText = `
+                    border-left: 4px solid ${getPriorityColor(rec.priority)};
+                    transition: transform 0.3s ease;
+                `;
+                
+                card.onmouseover = () => card.style.transform = 'translateY(-2px)';
+                card.onmouseout = () => card.style.transform = 'translateY(0)';
+                
+                const implementationSteps = rec.implementation ? 
+                    rec.implementation.map((step, idx) => `<li>${step}</li>`).join('') : '';
+                
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <h5 style="color: var(--sa-blue); margin: 0;">${rec.title}</h5>
+                        <span class="badge" style="background: ${getPriorityColor(rec.priority)}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
+                            ${rec.priority.toUpperCase()}
+                        </span>
+                    </div>
+                    <p style="color: var(--sa-gray-dark); margin-bottom: 1rem;">${rec.description}</p>
+                    ${rec.potential_savings ? `
+                        <div style="font-size: 1.25rem; font-weight: bold; color: var(--sa-green); margin-bottom: 1rem;">
+                            Potential Savings: ${rec.potential_savings}
+                        </div>
+                    ` : ''}
+                    ${implementationSteps ? `
+                        <details>
+                            <summary style="cursor: pointer; color: var(--sa-blue);">Implementation Steps</summary>
+                            <ol style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                                ${implementationSteps}
+                            </ol>
+                        </details>
+                    ` : ''}
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        function displaySavingsOpportunities(savings) {
+            const container = document.getElementById('savingsOpportunities');
+            container.innerHTML = '';
+            
+            console.log('Displaying savings opportunities:', savings);
+            
+            if (savings.total_potential_savings) {
+                // Total savings card
+                const totalCard = document.createElement('div');
+                totalCard.className = 'card';
+                totalCard.style.cssText = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;';
+                totalCard.innerHTML = `
+                    <h5 style="margin-bottom: 0.5rem;">Total Potential Savings</h5>
+                    <div style="font-size: 2rem; font-weight: bold;">
+                        $${savings.total_potential_savings.toFixed(2)}/month
+                    </div>
+                    <div style="font-size: 0.9rem; opacity: 0.9;">
+                        ${savings.savings_percentage?.toFixed(1)}% of current costs
+                    </div>
+                `;
+                container.appendChild(totalCard);
+            }
+            
+            // Individual opportunities
+            (savings.opportunities || []).forEach(opp => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h5 style="color: var(--sa-blue); margin-bottom: 0.5rem;">${opp.name}</h5>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: var(--sa-green);">
+                        $${opp.monthly_savings.toFixed(2)}/month
+                    </div>
+                    <div style="color: var(--sa-gray-dark); font-size: 0.875rem;">
+                        Effort: ${opp.effort} | Timeline: ${opp.timeline}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        function displayImplementationRoadmap(roadmap) {
+            const container = document.getElementById('implementationRoadmap');
+            container.innerHTML = '';
+            
+            console.log('Displaying implementation roadmap:', roadmap);
+            
+            if (!roadmap || roadmap.length === 0) {
+                container.innerHTML = '<p style="color: var(--sa-gray-dark);">No implementation roadmap available.</p>';
+                return;
+            }
+            
+            roadmap.forEach((phase, index) => {
+                const phaseDiv = document.createElement('div');
+                phaseDiv.className = 'card';
+                phaseDiv.style.cssText = 'margin-bottom: 1rem; position: relative; padding-left: 3rem;';
+                
+                // Phase number
+                const phaseNumber = document.createElement('div');
+                phaseNumber.style.cssText = `
+                    position: absolute;
+                    left: 1rem;
+                    top: 1.5rem;
+                    width: 30px;
+                    height: 30px;
+                    background: var(--sa-blue);
+                    color: white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                `;
+                phaseNumber.textContent = index + 1;
+                
+                phaseDiv.innerHTML = `
+                    <h5 style="color: var(--sa-blue); margin-bottom: 0.5rem;">${phase.phase}</h5>
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong>Estimated Savings:</strong> $${phase.estimated_savings.toFixed(2)}/month
+                    </div>
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong>Effort Level:</strong> ${phase.effort}
+                    </div>
+                    <div>
+                        <strong>Key Actions:</strong>
+                        <ul style="margin-top: 0.25rem; margin-bottom: 0;">
+                            ${phase.actions.map(action => `<li>${action}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+                
+                phaseDiv.insertBefore(phaseNumber, phaseDiv.firstChild);
+                container.appendChild(phaseDiv);
+            });
+        }
+        
+        function displayROIAnalysis(roi) {
+            const container = document.getElementById('roiAnalysis');
+            container.innerHTML = '';
+            
+            const metrics = [
+                { label: 'Monthly Savings', value: `$${(roi.monthly_savings || 0).toFixed(2)}`, icon: '💰' },
+                { label: 'Annual Savings', value: `$${(roi.annual_savings || 0).toFixed(2)}`, icon: '📈' },
+                { label: 'Implementation Cost', value: `$${(roi.implementation_cost || 0).toFixed(2)}`, icon: '💸' },
+                { label: 'Payback Period', value: `${roi.payback_period_days || 0} days`, icon: '⏱️' },
+                { label: 'First Year Net', value: `$${(roi.first_year_net_savings || 0).toFixed(2)}`, icon: '🎯' },
+                { label: 'Savings %', value: `${(roi.savings_percentage || 0).toFixed(1)}%`, icon: '📊' }
+            ];
+            
+            metrics.forEach(metric => {
+                const div = document.createElement('div');
+                div.style.cssText = 'text-align: center;';
+                div.innerHTML = `
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">${metric.icon}</div>
+                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--sa-blue);">
+                        ${metric.value}
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--sa-gray-dark);">
+                        ${metric.label}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // Helper functions for AI display
+        function getInsightColor(impact) {
+            const colors = {
+                high: '#fee2e2',
+                medium: '#fef3c7',
+                low: '#dbeafe'
+            };
+            return colors[impact] || '#f5f5f5';
+        }
+        
+        function getInsightBorderColor(impact) {
+            const colors = {
+                high: 'var(--sa-red)',
+                medium: 'var(--sa-orange)',
+                low: 'var(--sa-blue)'
+            };
+            return colors[impact] || 'var(--sa-gray-medium)';
+        }
+        
+        function getInsightIcon(category) {
+            const icons = {
+                cost: '💰',
+                efficiency: '⚡',
+                optimization: '🎯',
+                risk: '⚠️'
+            };
+            return icons[category] || '📊';
+        }
+        
+        function getPriorityColor(priority) {
+            const colors = {
+                critical: 'var(--sa-red)',
+                high: 'var(--sa-orange)',
+                medium: 'var(--sa-blue)',
+                low: 'var(--sa-gray-dark)'
+            };
+            return colors[priority] || 'var(--sa-gray-medium)';
         }
     </script>
 </body>

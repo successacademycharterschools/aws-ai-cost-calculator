@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  aws-ai-cost-calculator:
+    build: .
+    container_name: aws-ai-cost-calculator
+    ports:
+      - "5002:5002"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=5002
+      # AWS credentials will be passed from host or configured via SSO
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+    volumes:
+      # Mount AWS credentials from host (for SSO)
+      - ~/.aws:/root/.aws:ro
+      # Mount for persistent logs and exports
+      - ./logs:/app/logs
+      - ./exports:/app/exports
+      # Mount config file
+      - ./.aws-cost-config.json:/app/.aws-cost-config.json:ro
+      # Mount .env file if exists
+      - ./.env:/app/.env:ro
+    networks:
+      - ai-calculator-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/api/test"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add Redis for caching (uncomment if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ai-calculator-redis
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - ai-calculator-network
+  #   restart: unless-stopped
+
+networks:
+  ai-calculator-network:
+    driver: bridge
+
+volumes:
+  logs:
+  exports:

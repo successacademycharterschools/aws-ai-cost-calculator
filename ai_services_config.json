@@ -1,0 +1,355 @@
+{
+  "ai_services": {
+    "bedrock": {
+      "cost_explorer_name": "Amazon Bedrock",
+      "category": "Foundation Models",
+      "resources": [
+        "agents",
+        "knowledge_bases",
+        "models",
+        "inference_profiles"
+      ],
+      "enabled_by_default": true,
+      "description": "Build and scale generative AI applications with foundation models"
+    },
+    "sagemaker": {
+      "cost_explorer_name": "Amazon SageMaker",
+      "category": "ML Platform",
+      "resources": [
+        "endpoints",
+        "notebook_instances",
+        "training_jobs",
+        "processing_jobs",
+        "models",
+        "pipelines"
+      ],
+      "enabled_by_default": true,
+      "description": "Build, train, and deploy machine learning models"
+    },
+    "comprehend": {
+      "cost_explorer_name": "Amazon Comprehend",
+      "category": "Natural Language Processing",
+      "resources": [
+        "analysis_jobs",
+        "endpoints",
+        "document_classifiers",
+        "entity_recognizers"
+      ],
+      "enabled_by_default": true,
+      "description": "Natural language processing and text analytics"
+    },
+    "textract": {
+      "cost_explorer_name": "Amazon Textract",
+      "category": "Document Analysis",
+      "resources": [
+        "document_analysis_jobs",
+        "document_text_detection_jobs"
+      ],
+      "enabled_by_default": true,
+      "description": "Extract text and data from documents"
+    },
+    "rekognition": {
+      "cost_explorer_name": "Amazon Rekognition",
+      "category": "Computer Vision",
+      "resources": [
+        "collections",
+        "stream_processors",
+        "projects"
+      ],
+      "enabled_by_default": true,
+      "description": "Image and video analysis"
+    },
+    "polly": {
+      "cost_explorer_name": "Amazon Polly",
+      "category": "Speech",
+      "resources": [
+        "lexicons",
+        "speech_synthesis_tasks"
+      ],
+      "enabled_by_default": true,
+      "description": "Turn text into lifelike speech"
+    },
+    "transcribe": {
+      "cost_explorer_name": "Amazon Transcribe",
+      "category": "Speech",
+      "resources": [
+        "transcription_jobs",
+        "vocabularies",
+        "language_models"
+      ],
+      "enabled_by_default": true,
+      "description": "Automatic speech recognition"
+    },
+    "translate": {
+      "cost_explorer_name": "Amazon Translate",
+      "category": "Natural Language Processing",
+      "resources": [
+        "translation_jobs",
+        "terminology"
+      ],
+      "enabled_by_default": true,
+      "description": "Neural machine translation"
+    },
+    "forecast": {
+      "cost_explorer_name": "Amazon Forecast",
+      "category": "Time Series Forecasting",
+      "resources": [
+        "datasets",
+        "predictors",
+        "forecasts"
+      ],
+      "enabled_by_default": true,
+      "description": "Time series forecasting using machine learning"
+    },
+    "personalize": {
+      "cost_explorer_name": "Amazon Personalize",
+      "category": "Personalization",
+      "resources": [
+        "datasets",
+        "solutions",
+        "campaigns",
+        "recommenders"
+      ],
+      "enabled_by_default": true,
+      "description": "Real-time personalization and recommendations"
+    },
+    "lex": {
+      "cost_explorer_name": "Amazon Lex",
+      "category": "Conversational AI",
+      "resources": [
+        "bots",
+        "bot_aliases",
+        "intents"
+      ],
+      "enabled_by_default": true,
+      "description": "Build conversational interfaces"
+    },
+    "kendra": {
+      "cost_explorer_name": "Amazon Kendra",
+      "category": "Enterprise Search",
+      "resources": [
+        "indexes",
+        "data_sources",
+        "experience"
+      ],
+      "enabled_by_default": true,
+      "description": "Intelligent enterprise search"
+    },
+    "lookoutvision": {
+      "cost_explorer_name": "Amazon Lookout for Vision",
+      "category": "Computer Vision",
+      "resources": [
+        "projects",
+        "models"
+      ],
+      "enabled_by_default": false,
+      "description": "Spot defects using computer vision"
+    },
+    "lookoutmetrics": {
+      "cost_explorer_name": "Amazon Lookout for Metrics",
+      "category": "Anomaly Detection",
+      "resources": [
+        "anomaly_detectors",
+        "alerts"
+      ],
+      "enabled_by_default": false,
+      "description": "Detect anomalies in metrics"
+    },
+    "lookoutequipment": {
+      "cost_explorer_name": "Amazon Lookout for Equipment",
+      "category": "Predictive Maintenance",
+      "resources": [
+        "datasets",
+        "models",
+        "inference_schedulers"
+      ],
+      "enabled_by_default": false,
+      "description": "Detect abnormal equipment behavior"
+    },
+    "frauddetector": {
+      "cost_explorer_name": "Amazon Fraud Detector",
+      "category": "Fraud Detection",
+      "resources": [
+        "detectors",
+        "models",
+        "rules"
+      ],
+      "enabled_by_default": false,
+      "description": "Detect online fraud"
+    },
+    "codeguru": {
+      "cost_explorer_name": "Amazon CodeGuru",
+      "category": "Developer Tools",
+      "resources": [
+        "profiler_groups",
+        "reviewer_associations"
+      ],
+      "enabled_by_default": false,
+      "description": "Automated code reviews and application performance recommendations"
+    },
+    "devopsguru": {
+      "cost_explorer_name": "Amazon DevOps Guru",
+      "category": "Developer Tools",
+      "resources": [
+        "resource_collections",
+        "insights"
+      ],
+      "enabled_by_default": false,
+      "description": "ML-powered operations insights"
+    },
+    "monitron": {
+      "cost_explorer_name": "Amazon Monitron",
+      "category": "Industrial IoT",
+      "resources": [
+        "projects",
+        "gateways"
+      ],
+      "enabled_by_default": false,
+      "description": "End-to-end equipment monitoring"
+    },
+    "healthlake": {
+      "cost_explorer_name": "AWS HealthLake",
+      "category": "Healthcare",
+      "resources": [
+        "datastores",
+        "import_jobs"
+      ],
+      "enabled_by_default": false,
+      "description": "Store, transform, and analyze health data"
+    },
+    "panorama": {
+      "cost_explorer_name": "AWS Panorama",
+      "category": "Computer Vision",
+      "resources": [
+        "devices",
+        "application_instances"
+      ],
+      "enabled_by_default": false,
+      "description": "Computer vision at the edge"
+    },
+    "augmentedai": {
+      "cost_explorer_name": "Amazon Augmented AI",
+      "category": "Human Review",
+      "resources": [
+        "human_loops",
+        "flow_definitions"
+      ],
+      "enabled_by_default": false,
+      "description": "Human review of ML predictions"
+    }
+  },
+  "project_mappings": {
+    "ask-eva": {
+      "name": "Ask Eva",
+      "description": "Bot simulating answers from school staff",
+      "expected_services": [
+        "bedrock",
+        "kendra",
+        "lambda",
+        "s3",
+        "dynamodb"
+      ]
+    },
+    "iep-report": {
+      "name": "IEP Report",
+      "description": "Generate PDF reports for scholars",
+      "expected_services": [
+        "bedrock",
+        "lambda",
+        "s3",
+        "textract"
+      ]
+    },
+    "resume-knockout": {
+      "name": "Resume Knockout",
+      "description": "Resume filtering based on business criteria",
+      "expected_services": [
+        "textract",
+        "comprehend",
+        "lambda",
+        "s3"
+      ]
+    },
+    "resume-scoring": {
+      "name": "Resume Scoring",
+      "description": "Ranking resumes based on business criteria",
+      "expected_services": [
+        "textract",
+        "comprehend",
+        "bedrock",
+        "lambda",
+        "s3"
+      ]
+    },
+    "financial-aid": {
+      "name": "Financial Aid",
+      "description": "Filter financial aid letters to show actual costs",
+      "expected_services": [
+        "textract",
+        "comprehend",
+        "lambda",
+        "s3",
+        "dynamodb"
+      ]
+    },
+    "parent-app": {
+      "name": "Parent App",
+      "description": "Parent engagement mobile application",
+      "expected_services": [
+        "bedrock",
+        "lambda"
+      ]
+    },
+    "sales-force": {
+      "name": "Sales Force Integration",
+      "description": "Salesforce AI integration",
+      "expected_services": [
+        "bedrock",
+        "lambda"
+      ]
+    },
+    "professional-development": {
+      "name": "Professional Development",
+      "description": "PD bot for training and development",
+      "expected_services": [
+        "bedrock",
+        "lambda"
+      ]
+    },
+    "infrastructure": {
+      "name": "AI Infrastructure",
+      "description": "Shared AI infrastructure and experimental resources",
+      "expected_services": [
+        "sagemaker",
+        "opensearch",
+        "bedrock"
+      ]
+    }
+  },
+  "tag_keys": {
+    "project": [
+      "Project",
+      "project",
+      "ProjectName",
+      "project-name"
+    ],
+    "environment": [
+      "Environment",
+      "environment",
+      "Env",
+      "env"
+    ],
+    "team": [
+      "Team",
+      "team",
+      "Owner",
+      "owner"
+    ],
+    "application": [
+      "Application",
+      "application",
+      "App",
+      "app"
+    ]
+  }
+}

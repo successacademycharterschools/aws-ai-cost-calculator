@@ -78,8 +78,14 @@ def create_virtual_env():
         pip_cmd = 'venv\\Scripts\\pip.exe'
     else:
         activate_cmd = 'source venv/bin/activate'
-        python_cmd = 'venv/bin/python'
-        pip_cmd = 'venv/bin/pip'
+        python_cmd = 'venv/bin/python3'
+        pip_cmd = 'venv/bin/pip3'
+        
+        # Check if the commands exist, fallback to python/pip if needed
+        if not os.path.exists(python_cmd):
+            python_cmd = 'venv/bin/python'
+        if not os.path.exists(pip_cmd):
+            pip_cmd = 'venv/bin/pip'
     
     return python_cmd, pip_cmd, activate_cmd
 
@@ -204,6 +210,9 @@ def launch_application(python_cmd):
     print(f"{Colors.CYAN}📊 Open your browser to: http://localhost:{port}{Colors.ENDC}")
     print(f"{Colors.YELLOW}Press Ctrl+C to stop the server{Colors.ENDC}\n")
     
+    # Get absolute path to python before changing directory
+    python_abs_path = os.path.abspath(python_cmd)
+    
     # Change to web-interface directory and run
     os.chdir('web-interface')
     
@@ -212,7 +221,7 @@ def launch_application(python_cmd):
         update_app_port(port)
     
     try:
-        subprocess.run([python_cmd, 'app.py'])
+        subprocess.run([python_abs_path, 'app.py'])
     except KeyboardInterrupt:
         print(f"\n{Colors.GREEN}✅ Server stopped{Colors.ENDC}")
 
